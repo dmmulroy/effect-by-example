@@ -10,7 +10,7 @@
 
 ## Introduction & Core Concepts
 
-### The Problem Effect Number Solves
+### The Problem Number Solves
 
 JavaScript's native number operations can be error-prone and lack type safety, especially when dealing with edge cases like division by zero, floating-point precision, and validation.
 
@@ -46,17 +46,16 @@ This approach leads to:
 - **Boilerplate Code** - Repetitive validation and range checking
 - **Type Unsafe** - No compile-time guarantees about numeric operations
 
-### The Effect Number Solution
+### The Number Solution
 
 Effect Number provides a complete toolkit for safe, functional numeric operations with built-in error handling and type safety.
 
 ```typescript
-import { Number, Option, pipe } from "effect"
+import { Number, Option, Effect } from "effect"
 
 // Type-safe operations with automatic error handling
 const calculatePercentage = (value: number, total: number): Option.Option<number> =>
-  pipe(
-    Number.divide(value, total),
+  Number.divide(value, total).pipe(
     Option.map(ratio => Number.multiply(ratio, 100))
   )
 
@@ -64,21 +63,20 @@ const calculatePercentage = (value: number, total: number): Option.Option<number
 const validateScore = Number.between({ minimum: 0, maximum: 100 })
 
 // Safe arithmetic with built-in precision handling
-const calculateTotalWithTax = (price: number, taxRate: number): number =>
-  pipe(
-    price,
-    Number.multiply(Number.sum(1, taxRate)),
-    Number.round
+const calculateTotalWithTax = (price: number, taxRate: number): Effect.Effect<number> =>
+  Effect.succeed(price).pipe(
+    Effect.map(p => Number.multiply(p, Number.sum(1, taxRate))),
+    Effect.map(Number.round)
   )
 ```
 
 ### Key Concepts
 
-**Type Guards**: `Number.isNumber` provides runtime type checking with TypeScript type narrowing
+**Type Guards**: `Number.isNumber(value)` provides runtime type checking with TypeScript type narrowing
 
-**Safe Division**: `Number.divide` returns `Option<number>` to handle division by zero gracefully
+**Safe Division**: `Number.divide(a, b)` returns `Option<number>` to handle division by zero gracefully
 
-**Range Operations**: `Number.between`, `Number.clamp`, and comparison functions for boundary checking
+**Range Operations**: `Number.between({ minimum: 0, maximum: 100 })` and `Number.clamp({ minimum: 0, maximum: 100 })` for boundary checking
 
 **Functional Composition**: All operations are pipeable and composable for building complex calculations
 
@@ -107,22 +105,20 @@ const numericValues = mixedData.filter(Number.isNumber)
 ### Pattern 2: Safe Mathematical Operations
 
 ```typescript
-import { Number, Option, pipe } from "effect"
+import { Number, Option, Effect } from "effect"
 
 // Basic arithmetic with error handling
-const safeCalculation = (a: number, b: number) => {
-  return pipe(
-    Number.divide(a, b),
+const safeCalculation = (a: number, b: number) =>
+  Number.divide(a, b).pipe(
     Option.map(result => Number.multiply(result, 2)),
     Option.getOrElse(() => 0)
   )
-}
 
 // Chaining operations safely
 const complexCalculation = (x: number, y: number, z: number) =>
   Effect.gen(function* () {
-    const step1 = yield* Number.divide(x, y)
-    const step2 = Number.sum(step1, z)
+    const divisionResult = yield* Effect.fromOption(Number.divide(x, y), () => new Error("Division by zero"))
+    const step2 = Number.sum(divisionResult, z)
     const step3 = Number.multiply(step2, 2)
     return Number.round(step3)
   }).pipe(
@@ -155,7 +151,7 @@ const minTemp = temperatures.reduce(Number.min)
 Building a robust pricing system with tax calculation, discounts, and currency formatting.
 
 ```typescript
-import { Number, Option, Effect, pipe } from "effect"
+import { Number, Option, Effect } from "effect"
 
 interface PriceCalculationError extends Error {
   readonly _tag: "PriceCalculationError"
@@ -184,22 +180,19 @@ interface PriceBreakdown {
 
 // Helper for safe percentage calculations
 const calculatePercentage = (value: number, percentage: number): Option.Option<number> =>
-  pipe(
-    Number.divide(percentage, 100),
+  Number.divide(percentage, 100).pipe(
     Option.map(rate => Number.multiply(value, rate))
   )
 
 // Calculate discount amount
 const calculateDiscount = (basePrice: number, discountPercentage: number): number =>
-  pipe(
-    calculatePercentage(basePrice, discountPercentage),
+  calculatePercentage(basePrice, discountPercentage).pipe(
     Option.getOrElse(() => 0)
   )
 
 // Calculate tax on a given amount
 const calculateTax = (amount: number, taxRate: number): number =>
-  pipe(
-    calculatePercentage(amount, taxRate),
+  calculatePercentage(amount, taxRate).pipe(
     Option.getOrElse(() => 0)
   )
 
@@ -243,7 +236,8 @@ const product: Product = {
   discountPercentage: 15
 }
 
-const priceBreakdown = yield* calculatePrice(product)
+// In practice, you would run this effect:
+// const priceBreakdown = yield* calculatePrice(product)
 // Result: {
 //   basePrice: 999.99,
 //   discount: 150.00,
@@ -258,7 +252,7 @@ const priceBreakdown = yield* calculatePrice(product)
 Processing sensor data with outlier detection and statistical calculations.
 
 ```typescript
-import { Number, Array as Arr, Option, Effect, pipe } from "effect"
+import { Number, Array as Arr, Option, Effect } from "effect"
 
 interface StatisticalSummary {
   readonly count: number
@@ -291,7 +285,7 @@ const calculateMedian = (sortedValues: ReadonlyArray<number>): number => {
 
 // Detect outliers using IQR method
 const detectOutliers = (values: ReadonlyArray<number>): ReadonlyArray<number> => {
-  const sorted = pipe(values, Arr.sort(Number.Order))
+  const sorted = Arr.sort(values, Number.Order)
   const q1Index = Math.floor(sorted.length * 0.25)
   const q3Index = Math.floor(sorted.length * 0.75)
   
@@ -325,8 +319,7 @@ export const analyzeSensorData = (readings: ReadonlyArray<SensorReading>): Effec
     // Calculate basic statistics
     const count = values.length
     const sum = Number.sumAll(values)
-    const mean = pipe(
-      Number.divide(sum, count),
+    const mean = Number.divide(sum, count).pipe(
       Option.getOrElse(() => 0)
     )
 
@@ -336,7 +329,7 @@ export const analyzeSensorData = (readings: ReadonlyArray<SensorReading>): Effec
     const range = Number.subtract(max, min)
 
     // Calculate median
-    const sortedValues = pipe(values, Arr.sort(Number.Order))
+    const sortedValues = Arr.sort(values, Number.Order)
     const median = calculateMedian(sortedValues)
 
     return {
@@ -373,7 +366,8 @@ const sensorReadings: ReadonlyArray<SensorReading> = [
 ]
 
 const validReadings = filterValidReadings(sensorReadings, 0, 40)
-const statistics = yield* analyzeSensorData(validReadings)
+// In practice, you would run this effect:
+// const statistics = yield* analyzeSensorData(validReadings)
 ```
 
 ### Example 3: Financial Portfolio Calculator
@@ -381,7 +375,7 @@ const statistics = yield* analyzeSensorData(validReadings)
 Building a portfolio management system with risk calculations and rebalancing.
 
 ```typescript
-import { Number, Option, Effect, Array as Arr, pipe } from "effect"
+import { Number, Option, Effect, Array as Arr } from "effect"
 
 interface Asset {
   readonly symbol: string
@@ -405,16 +399,14 @@ interface RebalanceRecommendation {
 
 // Calculate current allocation percentage for an asset
 const calculateCurrentAllocation = (assetValue: number, totalValue: number): number =>
-  pipe(
-    Number.divide(assetValue, totalValue),
+  Number.divide(assetValue, totalValue).pipe(
     Option.map(ratio => Number.multiply(ratio, 100)),
     Option.getOrElse(() => 0)
   )
 
 // Calculate target value for an asset based on allocation
 const calculateTargetValue = (targetAllocation: number, totalValue: number): number =>
-  pipe(
-    Number.divide(targetAllocation, 100),
+  Number.divide(targetAllocation, 100).pipe(
     Option.map(ratio => Number.multiply(ratio, totalValue)),
     Option.getOrElse(() => 0)
   )
@@ -482,8 +474,9 @@ const portfolio: Portfolio = {
   ]
 }
 
-const recommendations = yield* generateRebalanceRecommendations(portfolio)
-const riskScore = calculatePortfolioRisk(recommendations)
+// In practice, you would run this effect:
+// const recommendations = yield* generateRebalanceRecommendations(portfolio)
+// const riskScore = calculatePortfolioRisk(recommendations)
 
 // Example output:
 // [
@@ -540,8 +533,7 @@ const aggregateTransactions = (transactions: ReadonlyArray<{ amount: number, typ
   const totalExpenses = Number.sumAll(expenses)
   const transactionCount = transactions.length
   
-  const averageAmount = pipe(
-    Number.divide(Number.sum(totalRevenue, totalExpenses), transactionCount),
+  const averageAmount = Number.divide(Number.sum(totalRevenue, totalExpenses), transactionCount).pipe(
     Option.getOrElse(() => 0)
   )
   
@@ -633,9 +625,8 @@ interface RateCalculationResult {
 const calculateConversionRate = (
   conversions: number,
   totalViews: number
-): RateCalculationResult => {
-  return pipe(
-    Number.divide(conversions, totalViews),
+): RateCalculationResult =>
+  Number.divide(conversions, totalViews).pipe(
     Option.match({
       onNone: () => ({
         rate: 0,
@@ -648,7 +639,6 @@ const calculateConversionRate = (
       })
     })
   )
-}
 
 // Batch rate calculations with error recovery
 const calculateBatchRates = (
@@ -688,8 +678,7 @@ const calculateCompoundInterest = (
     }
     
     // Calculate rate per period
-    const ratePerPeriod = yield* pipe(
-      Number.divide(annualRate, compoundingFrequency),
+    const ratePerPeriod = yield* Number.divide(annualRate, compoundingFrequency).pipe(
       Option.match({
         onNone: () => Effect.fail(new Error("Invalid compounding frequency")),
         onSome: Effect.succeed
@@ -772,24 +761,19 @@ const findRecommendedProducts = (
 }
 
 // Sorting with custom comparators
-const sortProductsByValue = (products: ReadonlyArray<Product>): ReadonlyArray<Product> => {
-  return pipe(
-    products,
-    Arr.sort((a, b) => {
-      // Calculate value score: rating / log(price)
-      const valueA = Number.divide(a.rating, Math.log(a.price + 1))
-      const valueB = Number.divide(b.rating, Math.log(b.price + 1))
-      
-      return pipe(
-        Option.all([valueA, valueB]),
-        Option.match({
-          onNone: () => 0,
-          onSome: ([vA, vB]) => Number.sign(Number.subtract(vB, vA))
-        })
-      )
-    })
-  )
-}
+const sortProductsByValue = (products: ReadonlyArray<Product>): ReadonlyArray<Product> =>
+  Arr.sort(products, (a, b) => {
+    // Calculate value score: rating / log(price)
+    const valueA = Number.divide(a.rating, Math.log(a.price + 1))
+    const valueB = Number.divide(b.rating, Math.log(b.price + 1))
+    
+    return Option.all([valueA, valueB]).pipe(
+      Option.match({
+        onNone: () => 0,
+        onSome: ([vA, vB]) => Number.sign(Number.subtract(vB, vA))
+      })
+    )
+  })
 ```
 
 #### Advanced Comparison: Multi-Criteria Scoring
@@ -827,8 +811,7 @@ const calculatePerformanceScore = (
   const totalScore = Number.sumAll([salesScore, satisfactionScore, teamworkScore, experienceScore])
   const totalWeight = Number.sumAll([weights.sales, weights.satisfaction, weights.teamwork, weights.experience])
   
-  return pipe(
-    Number.divide(totalScore, totalWeight),
+  return Number.divide(totalScore, totalWeight).pipe(
     Option.getOrElse(() => 0),
     score => Number.clamp({ minimum: 0, maximum: 100 })(score)
   )
@@ -852,9 +835,9 @@ const rankEmployees = (
     score: calculatePerformanceScore(employee, weights)
   }))
   
-  const sortedEmployees = pipe(
+  const sortedEmployees = Arr.sort(
     scoredEmployees,
-    Arr.sort((a, b) => Number.sign(Number.subtract(b.score, a.score)))
+    (a, b) => Number.sign(Number.subtract(b.score, a.score))
   )
   
   return sortedEmployees.map((item, index) => ({
@@ -988,7 +971,10 @@ class FinancialNumber {
   static from(value: number, precision: number = 2): FinancialNumber {
     const multiplier = Math.pow(10, precision)
     const rounded = Math.round(Number.multiply(value, multiplier))
-    return new FinancialNumber(Number.divide(rounded, multiplier).pipe(Option.getOrElse(() => 0)), precision)
+    return new FinancialNumber(
+      Number.divide(rounded, multiplier).pipe(Option.getOrElse(() => 0)), 
+      precision
+    )
   }
   
   add(other: FinancialNumber | number): FinancialNumber {
@@ -1008,15 +994,13 @@ class FinancialNumber {
   
   divide(other: FinancialNumber | number): Option.Option<FinancialNumber> {
     const otherValue = other instanceof FinancialNumber ? other.value : other
-    return pipe(
-      Number.divide(this.value, otherValue),
+    return Number.divide(this.value, otherValue).pipe(
       Option.map(result => FinancialNumber.from(result, this.precision))
     )
   }
   
   percentage(percent: number): FinancialNumber {
-    return pipe(
-      Number.divide(percent, 100),
+    return Number.divide(percent, 100).pipe(
       Option.map(rate => this.multiply(rate)),
       Option.getOrElse(() => FinancialNumber.from(0, this.precision))
     )
@@ -1075,16 +1059,13 @@ const Statistics = {
   // Central tendency measures
   mean: (values: ReadonlyArray<number>): Option.Option<number> =>
     values.length > 0
-      ? pipe(
-          Number.divide(Number.sumAll(values), values.length),
-          Option.some
-        )
+      ? Number.divide(Number.sumAll(values), values.length)
       : Option.none(),
   
   median: (values: ReadonlyArray<number>): Option.Option<number> => {
     if (values.length === 0) return Option.none()
     
-    const sorted = pipe(values, Arr.sort(Number.Order))
+    const sorted = Arr.sort(values, Number.Order)
     const middle = Math.floor(sorted.length / 2)
     
     if (sorted.length % 2 === 0) {
@@ -1119,8 +1100,7 @@ const Statistics = {
   },
   
   variance: (values: ReadonlyArray<number>): Option.Option<number> =>
-    pipe(
-      Statistics.mean(values),
+    Statistics.mean(values).pipe(
       Option.flatMap(mean => {
         const squaredDifferences = values.map(value => 
           Number.multiply(Number.subtract(value, mean), Number.subtract(value, mean))
@@ -1130,8 +1110,7 @@ const Statistics = {
     ),
   
   standardDeviation: (values: ReadonlyArray<number>): Option.Option<number> =>
-    pipe(
-      Statistics.variance(values),
+    Statistics.variance(values).pipe(
       Option.map(Math.sqrt)
     ),
   
@@ -1141,9 +1120,10 @@ const Statistics = {
       return Option.none()
     }
     
-    const sorted = pipe(values, Arr.sort(Number.Order))
-    const index = pipe(
-      Number.multiply(Number.divide(p, 100).pipe(Option.getOrElse(() => 0)), Number.subtract(sorted.length, 1)),
+    const sorted = Arr.sort(values, Number.Order)
+    const index = Number.divide(p, 100).pipe(
+      Option.getOrElse(() => 0),
+      rate => Number.multiply(rate, Number.subtract(sorted.length, 1)),
       Math.floor
     )
     
@@ -1167,14 +1147,14 @@ const Statistics = {
       }
       
       const cubedDeviations = values.map(value => {
-        const deviation = Number.divide(Number.subtract(value, mean), stdDev).pipe(Option.getOrElse(() => 0))
+        const deviation = Number.divide(Number.subtract(value, mean), stdDev).pipe(
+          Option.getOrElse(() => 0)
+        )
         return Math.pow(deviation, 3)
       })
       
       const n = values.length
-      const skew = pipe(
-        Number.sumAll(cubedDeviations),
-        sum => Number.divide(sum, n),
+      const skew = Number.divide(Number.sumAll(cubedDeviations), n).pipe(
         Option.getOrElse(() => 0)
       )
       
@@ -1215,25 +1195,22 @@ console.log("Sales Analysis:", {
 Combine Number operations with Schema validation for robust data processing.
 
 ```typescript
-import { Schema, Number, Effect, pipe } from "effect"
+import { Schema, Number, Effect } from "effect"
 
 // Define schemas with Number validation
-const PositiveNumber = pipe(
-  Schema.Number,
+const PositiveNumber = Schema.Number.pipe(
   Schema.filter(Number.greaterThan(0), {
     message: () => "Number must be positive"
   })
 )
 
-const Percentage = pipe(
-  Schema.Number,
+const Percentage = Schema.Number.pipe(
   Schema.filter(Number.between({ minimum: 0, maximum: 100 }), {
     message: () => "Percentage must be between 0 and 100"
   })
 )
 
-const Currency = pipe(
-  Schema.Number,
+const Currency = Schema.Number.pipe(
   Schema.filter(Number.greaterThanOrEqualTo(0), {
     message: () => "Currency amount cannot be negative"
   }),
@@ -1252,8 +1229,7 @@ const ProductSchema = Schema.Struct({
   name: Schema.String,
   price: Currency,
   discountPercentage: Percentage,
-  stock: Schema.pipe(
-    Schema.Number,
+  stock: Schema.Number.pipe(
     Schema.filter(Number.greaterThanOrEqualTo(0), {
       message: () => "Stock cannot be negative"
     }),
@@ -1261,8 +1237,7 @@ const ProductSchema = Schema.Struct({
       message: () => "Stock must be a whole number"
     })
   ),
-  rating: pipe(
-    Schema.Number,
+  rating: Schema.Number.pipe(
     Schema.filter(Number.between({ minimum: 0, maximum: 5 }), {
       message: () => "Rating must be between 0 and 5"
     })
@@ -1272,8 +1247,7 @@ const ProductSchema = Schema.Struct({
 // Order calculation with schema validation
 const OrderItemSchema = Schema.Struct({
   productId: Schema.String,
-  quantity: Schema.pipe(
-    Schema.Number,
+  quantity: Schema.Number.pipe(
     Schema.filter(Number.greaterThan(0), {
       message: () => "Quantity must be positive"
     }),
@@ -1312,18 +1286,16 @@ const processOrder = (rawOrderData: unknown) =>
 Process numeric data streams with Number operations.
 
 ```typescript
-import { Stream, Number, Effect, Schedule, pipe } from "effect"
+import { Stream, Number, Effect, Schedule, Option } from "effect"
 
 // Real-time data processing with Number operations
 const processTemperatureStream = (temperatureStream: Stream.Stream<number>) =>
-  pipe(
-    temperatureStream,
+  temperatureStream.pipe(
     Stream.filter(Number.isNumber), // Ensure valid numbers
     Stream.filter(Number.between({ minimum: -50, maximum: 100 })), // Filter realistic temperatures
     Stream.map(temp => ({
       celsius: temp,
-      fahrenheit: pipe(
-        Number.multiply(temp, 9),
+      fahrenheit: Number.multiply(temp, 9).pipe(
         result => Number.divide(result, 5),
         Option.map(result => Number.sum(result, 32)),
         Option.getOrElse(() => 0)
@@ -1333,8 +1305,7 @@ const processTemperatureStream = (temperatureStream: Stream.Stream<number>) =>
     Stream.sliding(5), // Moving window of 5 readings
     Stream.map(window => ({
       readings: window,
-      average: pipe(
-        Number.divide(Number.sumAll(window.map(r => r.celsius)), window.length),
+      average: Number.divide(Number.sumAll(window.map(r => r.celsius)), window.length).pipe(
         Option.getOrElse(() => 0)
       ),
       max: window.reduce((max, reading) => Number.max(max.celsius, reading.celsius)),
@@ -1344,20 +1315,17 @@ const processTemperatureStream = (temperatureStream: Stream.Stream<number>) =>
 
 // Financial data aggregation stream
 const processStockPriceStream = (priceStream: Stream.Stream<{ symbol: string, price: number }>) =>
-  pipe(
-    priceStream,
+  priceStream.pipe(
     Stream.groupByKey(data => data.symbol),
     Stream.map(([symbol, symbolStream]) =>
-      pipe(
-        symbolStream,
+      symbolStream.pipe(
         Stream.map(data => data.price),
         Stream.filter(Number.greaterThan(0)), // Filter invalid prices
         Stream.sliding(20), // 20-period moving average
         Stream.map(prices => ({
           symbol,
           currentPrice: prices[prices.length - 1],
-          movingAverage: pipe(
-            Number.divide(Number.sumAll(prices), prices.length),
+          movingAverage: Number.divide(Number.sumAll(prices), prices.length).pipe(
             Option.getOrElse(() => 0)
           ),
           volatility: calculateVolatility(prices),
@@ -1373,21 +1341,20 @@ const calculateVolatility = (prices: ReadonlyArray<number>): number => {
   if (prices.length < 2) return 0
   
   const returns = prices.slice(1).map((price, index) =>
-    pipe(
-      Number.divide(price, prices[index]),
+    Number.divide(price, prices[index]).pipe(
       Option.map(ratio => Number.subtract(ratio, 1)),
       Option.getOrElse(() => 0)
     )
   )
   
-  const meanReturn = pipe(
-    Number.divide(Number.sumAll(returns), returns.length),
+  const meanReturn = Number.divide(Number.sumAll(returns), returns.length).pipe(
     Option.getOrElse(() => 0)
   )
   
-  const variance = pipe(
-    returns.map(ret => Math.pow(Number.subtract(ret, meanReturn), 2)),
-    squaredDiffs => Number.divide(Number.sumAll(squaredDiffs), squaredDiffs.length),
+  const variance = Number.divide(
+    Number.sumAll(returns.map(ret => Math.pow(Number.subtract(ret, meanReturn), 2))),
+    returns.length
+  ).pipe(
     Option.getOrElse(() => 0)
   )
   
@@ -1473,8 +1440,7 @@ describe("Number Operations", () => {
       const base = yield* PositiveNumberGen
       const percentage = yield* PercentageGen
       
-      const result = pipe(
-        Number.divide(percentage, 100),
+      const result = Number.divide(percentage, 100).pipe(
         Option.map(rate => Number.multiply(base, rate)),
         Option.getOrElse(() => 0)
       )
@@ -1493,8 +1459,7 @@ const createMockCalculator = () => ({
   add: vi.fn((a: number, b: number) => Number.sum(a, b)),
   divide: vi.fn((a: number, b: number) => Number.divide(a, b)),
   percentage: vi.fn((base: number, percent: number) =>
-    pipe(
-      Number.divide(percent, 100),
+    Number.divide(percent, 100).pipe(
       Option.map(rate => Number.multiply(base, rate))
     )
   )
@@ -1508,12 +1473,12 @@ describe("Financial Calculations", () => {
     const periods = 12 // Monthly compounding
     const years = 1
     
-    const result = calculateCompoundInterest({
+    const result = Effect.runSync(calculateCompoundInterest({
       principal,
       annualRate: rate,
       compoundingFrequency: periods,
       years
-    }).pipe(Effect.runSync)
+    }))
     
     // Expected: 1000 * (1 + 0.05/12)^(12*1) ≈ 1051.16
     expect(result).toBeCloseTo(1051.16, 2)
@@ -1527,12 +1492,12 @@ describe("Financial Calculations", () => {
     ]
     
     edgeCases.forEach(testCase => {
-      const result = calculatePrice({
+      const result = Effect.runSync(calculatePrice({
         id: "test",
         basePrice: testCase.price,
         taxRate: testCase.tax,
         discountPercentage: testCase.discount
-      }).pipe(Effect.runSync)
+      }))
       
       expect(result.total).toBeGreaterThanOrEqual(0)
       expect(Number.isFinite(result.total)).toBe(true)
@@ -1543,7 +1508,7 @@ describe("Financial Calculations", () => {
 
 ## Conclusion
 
-Effect Number provides comprehensive, type-safe numerical operations for building robust applications. It eliminates common pitfalls in JavaScript numeric programming while maintaining functional programming principles and excellent composability.
+Number provides comprehensive, type-safe numerical operations for building robust applications. It eliminates common pitfalls in JavaScript numeric programming while maintaining functional programming principles and excellent composability.
 
 Key benefits:
 - **Type Safety** - Compile-time guarantees and runtime type guards prevent numeric errors
@@ -1552,4 +1517,4 @@ Key benefits:
 - **Mathematical Rigor** - Built-in support for monoids, ordering, and statistical operations
 - **Production Ready** - Handles floating-point precision, validation, and real-world edge cases
 
-Use Effect Number when you need reliable numeric operations, financial calculations, statistical analysis, or any application where numeric precision and safety are critical requirements.
+Use Number when you need reliable numeric operations, financial calculations, statistical analysis, or any application where numeric precision and safety are critical requirements.

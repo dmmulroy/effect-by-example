@@ -12,151 +12,309 @@
 
 ### The Problem Predicate Solves
 
-When building applications, you constantly need to validate, filter, and test data. Traditional approaches often lead to scattered boolean logic, repeated validation code, and type-unsafe operations:
+When building Effect-based applications, you need robust validation, filtering, and data testing patterns that integrate seamlessly with Effect's type-safe ecosystem. Traditional approaches create scattered validation logic that doesn't compose well with Effect's error handling and async operations:
 
 ```typescript
-// Traditional approach - scattered boolean logic
-function validateUser(user: any) {
-  if (typeof user !== 'object' || user === null) return false
-  if (typeof user.email !== 'string' || user.email.length === 0) return false
-  if (typeof user.age !== 'number' || user.age < 0 || user.age > 150) return false
-  return true
+// Traditional approach - imperative validation with no Effect integration
+function validateUser(user: any): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    try {
+      if (typeof user !== 'object' || user === null) {
+        resolve(false)
+        return
+      }
+      if (typeof user.email !== 'string' || user.email.length === 0) {
+        resolve(false)
+        return
+      }
+      if (typeof user.age !== 'number' || user.age < 0 || user.age > 150) {
+        resolve(false)
+        return
+      }
+      resolve(true)
+    } catch (error) {
+      reject(error)
+    }
+  })
 }
 
-function filterActiveUsers(users: any[]) {
-  return users.filter(user => 
-    user.isActive && 
-    user.lastLogin && 
-    new Date(user.lastLogin) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-  )
-}
-
-function isValidProduct(product: any) {
-  return product.price > 0 && 
-         product.name.trim().length > 0 && 
-         product.category !== 'discontinued'
+// Scattered async filtering with manual error handling
+async function filterActiveUsers(users: any[]): Promise<any[]> {
+  const results = []
+  for (const user of users) {
+    try {
+      const isActive = await checkUserActivity(user)
+      const hasRecentLogin = await checkRecentLogin(user)
+      if (isActive && hasRecentLogin) {
+        results.push(user)
+      }
+    } catch (error) {
+      console.error('Failed to validate user:', error)
+      // User gets silently dropped - no error propagation
+    }
+  }
+  return results
 }
 ```
 
 This approach leads to:
-- **Code Duplication** - Similar validation logic scattered across the codebase
-- **Type Safety Issues** - No compile-time guarantees about predicate composition
-- **Poor Composability** - Difficult to combine and reuse validation logic
-- **Testing Complexity** - Hard to test individual validation pieces in isolation
+- **Poor Effect Integration** - No composability with Effect's error handling and async patterns
+- **Lost Type Safety** - Manual async handling loses TypeScript's ability to track error types
+- **Error Handling Gaps** - Validation errors get swallowed or handled inconsistently
+- **Testing Complexity** - Async validation logic is hard to test and compose
 
 ### The Predicate Solution
 
-Effect's Predicate module provides a composable, type-safe way to build and combine boolean logic:
+Effect's Predicate module provides composable, type-safe predicates that integrate seamlessly with Effect's ecosystem for robust validation workflows:
 
 ```typescript
-import { Predicate, String, Number } from "effect"
+import { Effect, Predicate, String, Number } from "effect"
 
-// Type-safe, composable predicates
-const isValidEmail = (email: string): boolean => 
-  String.isNonEmpty(email) && email.includes('@')
+// Type-safe, composable predicates for Effect workflows
+const validateUserEmail = (user: User): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const emailService = yield* EmailValidationService
+    const isValidFormat = String.isNonEmpty(user.email) && user.email.includes('@')
+    if (!isValidFormat) return false
+    return yield* emailService.verifyEmailExists(user.email)
+  })
 
-const isValidAge = Number.between(0, 150)
+const validateUserAge = (user: User): Effect.Effect<boolean, never> =>
+  Effect.succeed(Number.between(0, 150)(user.age))
 
-const isValidUser = Predicate.struct({
-  email: isValidEmail,
-  age: isValidAge
-})
+const validateCompleteUser = (user: User): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const emailValid = yield* validateUserEmail(user)
+    const ageValid = yield* validateUserAge(user)
+    return emailValid && ageValid
+  })
 
-const isActiveUser = Predicate.and(
-  (user: User) => user.isActive,
-  (user: User) => user.lastLogin > Date.now() - 30 * 24 * 60 * 60 * 1000
-)
+// Composable async filtering with full error tracking
+const filterActiveUsers = (users: User[]): Effect.Effect<User[], ValidationError | DatabaseError> =>
+  Effect.gen(function* () {
+    const userService = yield* UserService
+    const validUsers = yield* Effect.filter(
+      users,
+      (user) => Effect.gen(function* () {
+        const isValid = yield* validateCompleteUser(user)
+        const isActive = yield* userService.checkActivity(user)
+        return isValid && isActive
+      })
+    )
+    return validUsers
+  })
 ```
 
 ### Key Concepts
 
-**Predicate**: A function that takes a value and returns a boolean, with full type safety: `(a: A) => boolean`
+**Predicate in Effect**: A function `(a: A) => boolean` that can be composed with Effect operations for validation workflows
 
-**Refinement**: A special predicate that acts as a type guard, narrowing types: `(a: A) => a is B`
+**Effect-Based Validation**: Using `Effect.gen` + `yield*` to combine predicates with async operations, error handling, and service dependencies
 
-**Composition**: Combining predicates using logical operators (and, or, not) to build complex validation logic
+**Composable Validation**: Building complex validation logic by combining simple predicates using Effect's composition patterns
 
 ## Basic Usage Patterns
 
-### Pattern 1: Type Guards and Basic Predicates
+### Pattern 1: Effect-Based Validation with Services
 
 ```typescript
-import { Predicate } from "effect"
+import { Effect, Predicate, Context } from "effect"
 
-// Built-in type guards
-const isStringValue = Predicate.isString
-const isNumberValue = Predicate.isNumber
-const isNotNull = Predicate.isNotNull
+// Service for validation operations
+class ValidationService extends Context.Tag("ValidationService")<
+  ValidationService,
+  {
+    validateEmail: (email: string) => Effect.Effect<boolean, ValidationError>
+    validateAge: (age: number) => Effect.Effect<boolean, never>
+    checkUserExists: (userId: string) => Effect.Effect<boolean, DatabaseError>
+  }
+>() {}
 
-// Custom predicates
-const isPositive = (n: number): boolean => n > 0
-const isEven = (n: number): boolean => n % 2 === 0
-const isNonEmptyString = (s: string): boolean => s.length > 0
+// Effect-based predicates with service dependencies
+const validateUserEmail = (email: string): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const validation = yield* ValidationService
+    const hasValidFormat = Predicate.and(
+      (email: string) => email.length > 0,
+      (email: string) => email.includes('@')
+    )(email)
+    
+    if (!hasValidFormat) return false
+    return yield* validation.validateEmail(email)
+  })
 
-// Usage
-console.log(isStringValue("hello")) // true
-console.log(isNumberValue("hello")) // false
-console.log(isPositive(-5)) // false
+const validateUserAge = (age: number): Effect.Effect<boolean, never> =>
+  Effect.gen(function* () {
+    const validation = yield* ValidationService
+    return yield* validation.validateAge(age)
+  })
+
+// Usage in business logic
+const processUserRegistration = (userData: { email: string; age: number; userId: string }) =>
+  Effect.gen(function* () {
+    const emailValid = yield* validateUserEmail(userData.email)
+    const ageValid = yield* validateUserAge(userData.age)
+    
+    if (!emailValid || !ageValid) {
+      return yield* Effect.fail(new ValidationError('Invalid user data'))
+    }
+    
+    const validation = yield* ValidationService
+    const userExists = yield* validation.checkUserExists(userData.userId)
+    
+    if (userExists) {
+      return yield* Effect.fail(new ValidationError('User already exists'))
+    }
+    
+    return { status: 'valid', data: userData }
+  }).pipe(
+    Effect.catchTag('ValidationError', (error) => 
+      Effect.succeed({ status: 'invalid', error: error.message })
+    ),
+    Effect.catchTag('DatabaseError', (error) =>
+      Effect.fail(new SystemError('Database validation failed', { cause: error }))
+    )
+  )
 ```
 
-### Pattern 2: Logical Composition
+### Pattern 2: Predicate Composition with Effect Operations
 
 ```typescript
-import { Predicate, Number } from "effect"
+import { Effect, Predicate, Array as Arr } from "effect"
 
-// Combine predicates with logical operators
-const isPositiveEven = Predicate.and(
-  (n: number) => n > 0,
-  (n: number) => n % 2 === 0
-)
-
-const isZeroOrPositive = Predicate.or(
-  (n: number) => n === 0,
-  (n: number) => n > 0
-)
-
-const isNotNegative = Predicate.not(Number.lessThan(0))
-
-// Usage
-console.log(isPositiveEven(4)) // true
-console.log(isPositiveEven(3)) // false
-console.log(isZeroOrPositive(0)) // true
-console.log(isNotNegative(-1)) // false
-```
-
-### Pattern 3: Struct Validation
-
-```typescript
-import { Predicate, String, Number } from "effect"
-
-interface User {
+interface Product {
+  id: string
   name: string
-  age: number
-  email: string
+  price: number
+  category: string
+  inStock: boolean
 }
 
-// Validate entire objects
-const isValidUser = Predicate.struct({
-  name: String.isNonEmpty,
-  age: Number.between(0, 150),
-  email: (email: string) => email.includes('@') && email.includes('.')
-})
+// Simple predicates for composition
+const isValidPrice = (price: number): boolean => price > 0
+const isValidName = (name: string): boolean => name.length > 0
+const isInStock = (product: Product): boolean => product.inStock
 
-const user1: User = { name: "John", age: 30, email: "john@example.com" }
-const user2: User = { name: "", age: 200, email: "invalid" }
+// Effect-based validation pipeline
+const validateProduct = (product: Product): Effect.Effect<Product, ValidationError> =>
+  Effect.gen(function* () {
+    const priceValid = isValidPrice(product.price)
+    const nameValid = isValidName(product.name)
+    const stockValid = isInStock(product)
+    
+    if (!priceValid) {
+      return yield* Effect.fail(new ValidationError(`Invalid price: ${product.price}`))
+    }
+    
+    if (!nameValid) {
+      return yield* Effect.fail(new ValidationError(`Invalid name: ${product.name}`))
+    }
+    
+    if (!stockValid) {
+      return yield* Effect.fail(new ValidationError(`Product out of stock: ${product.id}`))
+    }
+    
+    return product
+  })
 
-console.log(isValidUser(user1)) // true
-console.log(isValidUser(user2)) // false
+// Batch validation with Effect composition
+const validateProducts = (products: Product[]): Effect.Effect<Product[], ValidationError[]> =>
+  Effect.gen(function* () {
+    const results = yield* Effect.partition(products, validateProduct)
+    
+    if (results[0].length > 0) {
+      // Some products failed validation
+      return yield* Effect.fail(results[0])
+    }
+    
+    return results[1] // All valid products
+  })
+```
+
+### Pattern 3: Conditional Validation with Effect.gen
+
+```typescript
+import { Effect, Predicate } from "effect"
+
+interface Order {
+  id: string
+  customerId: string
+  items: OrderItem[]
+  paymentMethod: 'credit_card' | 'paypal' | 'bank_transfer'
+  total: number
+}
+
+interface OrderItem {
+  productId: string
+  quantity: number
+  price: number
+}
+
+// Conditional validation based on payment method
+const validatePaymentMethod = (order: Order): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const paymentService = yield* PaymentService
+    
+    if (order.paymentMethod === 'credit_card') {
+      const creditCardValid = yield* paymentService.validateCreditCard(order.customerId)
+      return creditCardValid && order.total <= 10000
+    }
+    
+    if (order.paymentMethod === 'paypal') {
+      const paypalValid = yield* paymentService.validatePayPal(order.customerId)
+      return paypalValid && order.total <= 5000
+    }
+    
+    if (order.paymentMethod === 'bank_transfer') {
+      const bankValid = yield* paymentService.validateBankAccount(order.customerId)
+      return bankValid && order.total >= 100
+    }
+    
+    return false
+  })
+
+// Complete order validation with conditional logic
+const validateOrder = (order: Order): Effect.Effect<Order, ValidationError> =>
+  Effect.gen(function* () {
+    // Basic validation
+    const hasItems = order.items.length > 0
+    const hasValidTotal = order.total > 0
+    
+    if (!hasItems) {
+      return yield* Effect.fail(new ValidationError('Order must have items'))
+    }
+    
+    if (!hasValidTotal) {
+      return yield* Effect.fail(new ValidationError('Order total must be positive'))
+    }
+    
+    // Payment method validation
+    const paymentValid = yield* validatePaymentMethod(order)
+    
+    if (!paymentValid) {
+      return yield* Effect.fail(new ValidationError('Payment method validation failed'))
+    }
+    
+    return order
+  }).pipe(
+    Effect.withSpan('validate-order', {
+      attributes: { 
+        'order.id': order.id,
+        'order.payment_method': order.paymentMethod,
+        'order.total': order.total 
+      }
+    })
+  )
 ```
 
 ## Real-World Examples
 
-### Example 1: E-commerce Product Validation
+### Example 1: E-commerce Product Validation Service
 
-Building a comprehensive product validation system for an e-commerce platform:
+Building a comprehensive product validation system with Effect-based error handling and service integration:
 
 ```typescript
-import { Predicate, String, Number, pipe } from "effect"
+import { Effect, Predicate, String, Number, Array as Arr, Context } from "effect"
 
 interface Product {
   id: string
@@ -169,78 +327,145 @@ interface Product {
   tags: string[]
 }
 
-// Individual validation predicates
-const hasValidId = (product: Product) => 
-  String.isNonEmpty(product.id) && product.id.length >= 3
+// Product validation service with external dependencies
+class ProductValidationService extends Context.Tag("ProductValidationService")<
+  ProductValidationService,
+  {
+    validateCategory: (category: string) => Effect.Effect<boolean, ValidationError>
+    checkInventory: (productId: string) => Effect.Effect<boolean, InventoryError>
+    validatePricing: (price: number, category: string) => Effect.Effect<boolean, PricingError>
+  }
+>() {}
 
-const hasValidName = (product: Product) =>
-  String.isNonEmpty(product.name) && product.name.length <= 100
+// Individual validation predicates using Effect.gen + yield*
+const validateProductBasics = (product: Product): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const hasValidId = String.isNonEmpty(product.id) && product.id.length >= 3
+    const hasValidName = String.isNonEmpty(product.name) && product.name.length <= 100
+    const hasValidDescription = String.isNonEmpty(product.description) && product.description.length <= 500
+    
+    if (!hasValidId) {
+      return yield* Effect.fail(new ValidationError(`Invalid product ID: ${product.id}`))
+    }
+    
+    if (!hasValidName) {
+      return yield* Effect.fail(new ValidationError(`Invalid product name: ${product.name}`))
+    }
+    
+    if (!hasValidDescription) {
+      return yield* Effect.fail(new ValidationError(`Invalid product description`))
+    }
+    
+    return true
+  })
 
-const hasValidPrice = (product: Product) =>
-  Number.isFinite(product.price) && product.price > 0
+const validateProductPricing = (product: Product): Effect.Effect<boolean, ValidationError | PricingError> =>
+  Effect.gen(function* () {
+    const validation = yield* ProductValidationService
+    const hasFinitePrice = Number.isFinite(product.price) && product.price > 0
+    
+    if (!hasFinitePrice) {
+      return yield* Effect.fail(new ValidationError(`Invalid price: ${product.price}`))
+    }
+    
+    const pricingValid = yield* validation.validatePricing(product.price, product.category)
+    return pricingValid
+  })
 
-const hasValidRating = (product: Product) =>
-  Number.between(0, 5)(product.rating)
+const validateProductCategory = (product: Product): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const validation = yield* ProductValidationService
+    const categoryValid = yield* validation.validateCategory(product.category)
+    
+    if (!categoryValid) {
+      return yield* Effect.fail(new ValidationError(`Invalid category: ${product.category}`))
+    }
+    
+    return true
+  })
 
-const hasValidCategory = (product: Product) =>
-  ['electronics', 'clothing', 'books', 'home', 'sports'].includes(product.category)
+const validateProductInventory = (product: Product): Effect.Effect<boolean, InventoryError> =>
+  Effect.gen(function* () {
+    const validation = yield* ProductValidationService
+    const inStock = yield* validation.checkInventory(product.id)
+    return inStock && product.inStock
+  })
 
-const hasValidDescription = (product: Product) =>
-  String.isNonEmpty(product.description) && product.description.length <= 500
+// Comprehensive product validation using Effect composition
+const validateCompleteProduct = (product: Product): Effect.Effect<Product, ValidationError | PricingError | InventoryError> =>
+  Effect.gen(function* () {
+    // Validate basics first
+    const basicsValid = yield* validateProductBasics(product)
+    
+    // Validate pricing and category in parallel
+    const [pricingValid, categoryValid] = yield* Effect.all([
+      validateProductPricing(product),
+      validateProductCategory(product)
+    ])
+    
+    // Validate inventory
+    const inventoryValid = yield* validateProductInventory(product)
+    
+    // Additional predicate validations
+    const ratingValid = Number.between(0, 5)(product.rating)
+    const tagsValid = Arr.isNonEmptyArray(product.tags) && 
+                     product.tags.every(tag => String.isNonEmpty(tag))
+    
+    if (!ratingValid) {
+      return yield* Effect.fail(new ValidationError(`Invalid rating: ${product.rating}`))
+    }
+    
+    if (!tagsValid) {
+      return yield* Effect.fail(new ValidationError('Product must have valid tags'))
+    }
+    
+    return product
+  }).pipe(
+    Effect.withSpan('validate-product', {
+      attributes: {
+        'product.id': product.id,
+        'product.category': product.category,
+        'product.price': product.price
+      }
+    })
+  )
 
-const hasValidTags = (product: Product) =>
-  Array.isArray(product.tags) && 
-  product.tags.length > 0 && 
-  product.tags.every(tag => String.isNonEmpty(tag))
-
-// Compose into comprehensive validation
-const isValidProduct = Predicate.and(
-  hasValidId,
-  Predicate.and(
-    hasValidName,
-    Predicate.and(
-      hasValidPrice,
-      Predicate.and(
-        hasValidRating,
-        Predicate.and(
-          hasValidCategory,
-          Predicate.and(hasValidDescription, hasValidTags)
-        )
-      )
+// Batch processing with error collection
+const processProductCatalog = (products: Product[]): Effect.Effect<Product[], ValidationSummary> =>
+  Effect.gen(function* () {
+    const results = yield* Effect.partition(products, validateCompleteProduct)
+    const [errors, validProducts] = results
+    
+    if (errors.length > 0) {
+      // Log validation failures but continue with valid products
+      yield* Effect.logWarning(`${errors.length} products failed validation`)
+      
+      const validationSummary = new ValidationSummary({
+        total: products.length,
+        valid: validProducts.length,
+        errors: errors.length
+      })
+      
+      return yield* Effect.fail(validationSummary)
+    }
+    
+    return validProducts
+  }).pipe(
+    Effect.catchTag('ValidationSummary', (summary) => 
+      Effect.gen(function* () {
+        yield* Effect.logInfo(`Processed ${summary.total} products: ${summary.valid} valid, ${summary.errors} errors`)
+        return yield* Effect.succeed([])
+      })
     )
   )
-)
-
-// Alternative: Using pipe for better readability
-const isValidProductPipe = pipe(
-  hasValidId,
-  Predicate.and(hasValidName),
-  Predicate.and(hasValidPrice),
-  Predicate.and(hasValidRating),
-  Predicate.and(hasValidCategory),
-  Predicate.and(hasValidDescription),
-  Predicate.and(hasValidTags)
-)
-
-// Usage in filtering
-const validateProducts = (products: Product[]): Product[] =>
-  products.filter(isValidProduct)
-
-// Usage in business logic
-const processProduct = (product: Product) => {
-  if (!isValidProduct(product)) {
-    throw new Error(`Invalid product: ${product.id}`)
-  }
-  // Process valid product...
-}
 ```
 
-### Example 2: User Access Control System
+### Example 2: User Access Control System with Effect Services
 
-Creating a flexible access control system using predicate composition:
+Creating a robust access control system that integrates with Effect services for audit logging and dynamic permission checking:
 
 ```typescript
-import { Predicate, String } from "effect"
+import { Effect, Predicate, Context, Duration } from "effect"
 
 interface User {
   id: string
@@ -255,106 +480,200 @@ interface Resource {
   type: 'document' | 'dashboard' | 'settings'
   level: 'public' | 'internal' | 'confidential' | 'restricted'
   department?: string
+  resourceId: string
 }
 
-// Role-based predicates
-const isAdmin = (user: User) => user.role === 'admin'
-const isModerator = (user: User) => user.role === 'moderator'
-const isActiveUser = (user: User) => user.isActive
-
-// Permission-based predicates
-const hasPermission = (permission: string) => (user: User) =>
-  user.permissions.includes(permission)
-
-const hasAnyPermission = (permissions: string[]) => (user: User) =>
-  permissions.some(permission => user.permissions.includes(permission))
-
-// Time-based predicates
-const isRecentlyActive = (user: User) =>
-  Date.now() - user.lastLogin < 7 * 24 * 60 * 60 * 1000 // 7 days
-
-// Department-based predicates
-const isInDepartment = (department: string) => (user: User) =>
-  user.department === department
-
-// Resource access predicates
-const canAccessPublic = (_user: User) => true
-
-const canAccessInternal = Predicate.and(
-  isActiveUser,
-  isRecentlyActive
-)
-
-const canAccessConfidential = Predicate.or(
-  isAdmin,
-  Predicate.and(
-    isModerator,
-    hasPermission('confidential_access')
-  )
-)
-
-const canAccessRestricted = Predicate.and(
-  isAdmin,
-  hasPermission('restricted_access')
-)
-
-// Complex access control logic
-const canAccessResource = (resource: Resource) => (user: User): boolean => {
-  // Department-specific access
-  if (resource.department && user.department !== resource.department) {
-    return false
+// Access control services with Effect integration
+class AuditService extends Context.Tag("AuditService")<
+  AuditService,
+  {
+    logAccessAttempt: (user: User, resource: Resource, granted: boolean) => Effect.Effect<void, AuditError>
+    checkRateLimit: (userId: string) => Effect.Effect<boolean, RateLimitError>
   }
+>() {}
 
-  // Level-based access
-  switch (resource.level) {
-    case 'public':
-      return canAccessPublic(user)
-    case 'internal':
-      return canAccessInternal(user)
-    case 'confidential':
-      return canAccessConfidential(user)
-    case 'restricted':
-      return canAccessRestricted(user)
-    default:
+class PermissionService extends Context.Tag("PermissionService")<
+  PermissionService,
+  {
+    getUserPermissions: (userId: string) => Effect.Effect<string[], PermissionError>
+    validateDepartmentAccess: (userId: string, department: string) => Effect.Effect<boolean, PermissionError>
+  }
+>() {}
+
+// Effect-based access control predicates
+const checkUserStatus = (user: User): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const isActive = user.isActive
+    const isRecentlyActive = Date.now() - user.lastLogin < Duration.toMillis(Duration.days(7))
+    
+    if (!isActive) {
+      return yield* Effect.fail(new ValidationError('User account is inactive'))
+    }
+    
+    if (!isRecentlyActive) {
+      return yield* Effect.fail(new ValidationError('User has not been active recently'))
+    }
+    
+    return true
+  })
+
+const checkRoleBasedAccess = (user: User, resource: Resource): Effect.Effect<boolean, AccessError> =>
+  Effect.gen(function* () {
+    // Basic role predicates
+    const isAdmin = user.role === 'admin'
+    const isModerator = user.role === 'moderator'
+    
+    if (resource.level === 'public') {
+      return true
+    }
+    
+    if (resource.level === 'internal') {
+      const statusValid = yield* checkUserStatus(user)
+      return statusValid
+    }
+    
+    if (resource.level === 'confidential') {
+      if (isAdmin) return true
+      
+      if (isModerator) {
+        const permissionService = yield* PermissionService
+        const userPermissions = yield* permissionService.getUserPermissions(user.id)
+        return userPermissions.includes('confidential_access')
+      }
+      
       return false
-  }
-}
+    }
+    
+    if (resource.level === 'restricted') {
+      if (!isAdmin) return false
+      
+      const permissionService = yield* PermissionService
+      const userPermissions = yield* permissionService.getUserPermissions(user.id)
+      return userPermissions.includes('restricted_access')
+    }
+    
+    return false
+  })
 
-// Usage examples
-const adminUser: User = {
-  id: 'admin-1',
-  role: 'admin',
-  permissions: ['restricted_access', 'confidential_access'],
-  isActive: true,
-  lastLogin: Date.now() - 1000 * 60 * 60, // 1 hour ago
-  department: 'IT'
-}
+const checkDepartmentAccess = (user: User, resource: Resource): Effect.Effect<boolean, PermissionError> =>
+  Effect.gen(function* () {
+    if (!resource.department) return true
+    
+    if (user.role === 'admin') return true // Admins can access all departments
+    
+    if (user.department === resource.department) return true
+    
+    // Check for cross-department permissions
+    const permissionService = yield* PermissionService
+    const hasCrossDepartmentAccess = yield* permissionService.validateDepartmentAccess(
+      user.id, 
+      resource.department
+    )
+    
+    return hasCrossDepartmentAccess
+  })
 
-const regularUser: User = {
-  id: 'user-1',
-  role: 'user',
-  permissions: [],
-  isActive: true,
-  lastLogin: Date.now() - 1000 * 60 * 60 * 24 * 10, // 10 days ago
-  department: 'Sales'
-}
+// Comprehensive access control with Effect composition
+const authorizeResourceAccess = (
+  user: User, 
+  resource: Resource
+): Effect.Effect<boolean, AccessError | PermissionError | RateLimitError | AuditError> =>
+  Effect.gen(function* () {
+    // Rate limiting check
+    const auditService = yield* AuditService
+    const rateLimitPassed = yield* auditService.checkRateLimit(user.id)
+    
+    if (!rateLimitPassed) {
+      yield* auditService.logAccessAttempt(user, resource, false)
+      return yield* Effect.fail(new RateLimitError('Rate limit exceeded'))
+    }
+    
+    // Role-based access check
+    const roleAccessGranted = yield* checkRoleBasedAccess(user, resource)
+    
+    if (!roleAccessGranted) {
+      yield* auditService.logAccessAttempt(user, resource, false)
+      return false
+    }
+    
+    // Department-based access check
+    const departmentAccessGranted = yield* checkDepartmentAccess(user, resource)
+    
+    if (!departmentAccessGranted) {
+      yield* auditService.logAccessAttempt(user, resource, false)
+      return false
+    }
+    
+    // Log successful access
+    yield* auditService.logAccessAttempt(user, resource, true)
+    return true
+  }).pipe(
+    Effect.withSpan('authorize-resource-access', {
+      attributes: {
+        'user.id': user.id,
+        'user.role': user.role,
+        'resource.id': resource.resourceId,
+        'resource.level': resource.level
+      }
+    })
+  )
 
-const confidentialDoc: Resource = {
-  type: 'document',
-  level: 'confidential',
-  department: 'IT'
-}
+// Batch authorization for multiple resources
+const authorizeMultipleResources = (
+  user: User, 
+  resources: Resource[]
+): Effect.Effect<{ resource: Resource; authorized: boolean }[], AccessError | PermissionError | RateLimitError | AuditError> =>
+  Effect.gen(function* () {
+    const results = yield* Effect.all(
+      resources.map(resource =>
+        Effect.gen(function* () {
+          const authorized = yield* authorizeResourceAccess(user, resource)
+          return { resource, authorized }
+        }).pipe(
+          Effect.catchAll((error) => Effect.succeed({ resource, authorized: false }))
+        )
+      )
+    )
+    
+    return results
+  })
 
-console.log(canAccessResource(confidentialDoc)(adminUser)) // true
-console.log(canAccessResource(confidentialDoc)(regularUser)) // false
+// Usage in application layer
+const handleResourceRequest = (
+  user: User, 
+  resource: Resource
+): Effect.Effect<ResourceResponse, ApplicationError> =>
+  Effect.gen(function* () {
+    const authorized = yield* authorizeResourceAccess(user, resource)
+    
+    if (!authorized) {
+      return { status: 'forbidden', message: 'Access denied' }
+    }
+    
+    // Fetch resource data (would integrate with data service)
+    const resourceData = yield* fetchResourceData(resource.resourceId)
+    
+    return {
+      status: 'success',
+      data: resourceData,
+      permissions: yield* calculateUserPermissions(user, resource)
+    }
+  }).pipe(
+    Effect.catchTags({
+      AccessError: (error) => Effect.succeed({ status: 'forbidden', message: error.message }),
+      PermissionError: (error) => Effect.succeed({ status: 'forbidden', message: 'Permission denied' }),
+      RateLimitError: (error) => Effect.succeed({ status: 'rate_limited', message: error.message })
+    }),
+    Effect.catchAll((error) => Effect.fail(new ApplicationError('Resource access failed', { cause: error })))
+  )
 ```
 
-### Example 3: Form Validation Pipeline
+### Example 3: Form Validation Pipeline with Effect Services
 
-Building a comprehensive form validation system:
+Building a comprehensive form validation system that integrates with external services for username uniqueness, email verification, and terms compliance:
 
 ```typescript
-import { Predicate, String, Array as Arr, pipe } from "effect"
+import { Effect, Predicate, String, Number, Array as Arr, Context } from "effect"
 
 interface FormData {
   username: string
@@ -366,392 +685,769 @@ interface FormData {
   agreedToTerms: boolean
 }
 
-// Field-specific validators
-const isValidUsername = (username: string): boolean =>
-  String.isNonEmpty(username) && 
-  username.length >= 3 && 
-  username.length <= 20 &&
-  /^[a-zA-Z0-9_]+$/.test(username)
-
-const isValidEmail = (email: string): boolean =>
-  String.isNonEmpty(email) &&
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-
-const isValidPassword = (password: string): boolean =>
-  String.isNonEmpty(password) &&
-  password.length >= 8 &&
-  /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)
-
-const isValidAge = (age: number): boolean =>
-  Number.isInteger(age) && age >= 13 && age <= 120
-
-const hasValidInterests = (interests: string[]): boolean =>
-  Array.isArray(interests) &&
-  interests.length > 0 &&
-  interests.length <= 5 &&
-  interests.every(interest => String.isNonEmpty(interest))
-
-// Cross-field validation
-const passwordsMatch = (data: FormData): boolean =>
-  data.password === data.confirmPassword
-
-const hasAgreedToTerms = (data: FormData): boolean =>
-  data.agreedToTerms === true
-
-// Compose individual field validators
-const hasValidFields = Predicate.struct({
-  username: isValidUsername,
-  email: isValidEmail,
-  password: isValidPassword,
-  age: isValidAge,
-  interests: hasValidInterests
-})
-
-// Complete form validation
-const isValidForm = Predicate.and(
-  hasValidFields,
-  Predicate.and(passwordsMatch, hasAgreedToTerms)
-)
-
-// Validation with detailed feedback
-interface ValidationResult {
-  isValid: boolean
-  errors: string[]
-}
-
-const validateFormWithFeedback = (data: FormData): ValidationResult => {
-  const errors: string[] = []
-
-  if (!isValidUsername(data.username)) {
-    errors.push('Username must be 3-20 characters, alphanumeric and underscores only')
+// Form validation services
+class FormValidationService extends Context.Tag("FormValidationService")<
+  FormValidationService,
+  {
+    checkUsernameUnique: (username: string) => Effect.Effect<boolean, ValidationError>
+    verifyEmailExists: (email: string) => Effect.Effect<boolean, EmailError>
+    validateInterests: (interests: string[]) => Effect.Effect<boolean, ValidationError>
   }
+>() {}
 
-  if (!isValidEmail(data.email)) {
-    errors.push('Please enter a valid email address')
+class ComplianceService extends Context.Tag("ComplianceService")<
+  ComplianceService,
+  {
+    validateTermsVersion: (agreedToTerms: boolean) => Effect.Effect<boolean, ComplianceError>
+    checkAgeRestrictions: (age: number) => Effect.Effect<boolean, ComplianceError>
   }
+>() {}
 
-  if (!isValidPassword(data.password)) {
-    errors.push('Password must be at least 8 characters with uppercase, lowercase, and number')
-  }
+// Field-specific validation with Effect integration
+const validateUsername = (username: string): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    // Basic format validation using predicates
+    const isValidFormat = String.isNonEmpty(username) && 
+                         username.length >= 3 && 
+                         username.length <= 20 &&
+                         /^[a-zA-Z0-9_]+$/.test(username)
+    
+    if (!isValidFormat) {
+      return yield* Effect.fail(new ValidationError('Username format invalid'))
+    }
+    
+    // Check uniqueness with service
+    const validationService = yield* FormValidationService
+    const isUnique = yield* validationService.checkUsernameUnique(username)
+    
+    if (!isUnique) {
+      return yield* Effect.fail(new ValidationError('Username already taken'))
+    }
+    
+    return true
+  })
 
-  if (!passwordsMatch(data)) {
-    errors.push('Passwords do not match')
-  }
+const validateEmail = (email: string): Effect.Effect<boolean, ValidationError | EmailError> =>
+  Effect.gen(function* () {
+    const isValidFormat = String.isNonEmpty(email) &&
+                         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    
+    if (!isValidFormat) {
+      return yield* Effect.fail(new ValidationError('Invalid email format'))
+    }
+    
+    const validationService = yield* FormValidationService
+    const emailExists = yield* validationService.verifyEmailExists(email)
+    
+    return emailExists
+  })
 
-  if (!isValidAge(data.age)) {
-    errors.push('Age must be between 13 and 120')
-  }
+const validatePassword = (password: string, confirmPassword: string): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const isValidPassword = String.isNonEmpty(password) &&
+                           password.length >= 8 &&
+                           /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)
+    
+    if (!isValidPassword) {
+      return yield* Effect.fail(new ValidationError('Password must be at least 8 characters with uppercase, lowercase, and number'))
+    }
+    
+    const passwordsMatch = password === confirmPassword
+    
+    if (!passwordsMatch) {
+      return yield* Effect.fail(new ValidationError('Passwords do not match'))
+    }
+    
+    return true
+  })
 
-  if (!hasValidInterests(data.interests)) {
-    errors.push('Please select 1-5 interests')
-  }
+const validateAgeAndCompliance = (age: number, agreedToTerms: boolean): Effect.Effect<boolean, ValidationError | ComplianceError> =>
+  Effect.gen(function* () {
+    const isValidAge = Number.isInteger(age) && age >= 13 && age <= 120
+    
+    if (!isValidAge) {
+      return yield* Effect.fail(new ValidationError('Age must be between 13 and 120'))
+    }
+    
+    const complianceService = yield* ComplianceService
+    
+    // Check age-based restrictions
+    const ageRestrictionsValid = yield* complianceService.checkAgeRestrictions(age)
+    
+    if (!ageRestrictionsValid) {
+      return yield* Effect.fail(new ComplianceError('Age restrictions not met'))
+    }
+    
+    // Validate terms agreement
+    const termsValid = yield* complianceService.validateTermsVersion(agreedToTerms)
+    
+    if (!termsValid) {
+      return yield* Effect.fail(new ComplianceError('Must agree to current terms'))
+    }
+    
+    return true
+  })
 
-  if (!hasAgreedToTerms(data)) {
-    errors.push('You must agree to the terms and conditions')
-  }
+const validateInterests = (interests: string[]): Effect.Effect<boolean, ValidationError> =>
+  Effect.gen(function* () {
+    const hasValidLength = Arr.isNonEmptyArray(interests) && interests.length <= 5
+    const allNonEmpty = interests.every(interest => String.isNonEmpty(interest))
+    
+    if (!hasValidLength || !allNonEmpty) {
+      return yield* Effect.fail(new ValidationError('Please select 1-5 valid interests'))
+    }
+    
+    const validationService = yield* FormValidationService
+    const interestsValid = yield* validationService.validateInterests(interests)
+    
+    return interestsValid
+  })
 
-  return {
-    isValid: errors.length === 0,
-    errors
-  }
-}
+// Complete form validation pipeline using Effect.gen + yield*
+const validateCompleteForm = (data: FormData): Effect.Effect<FormData, ValidationError | EmailError | ComplianceError> =>
+  Effect.gen(function* () {
+    // Validate all fields in parallel where possible
+    const [usernameValid, emailValid, interestsValid] = yield* Effect.all([
+      validateUsername(data.username),
+      validateEmail(data.email),
+      validateInterests(data.interests)
+    ])
+    
+    // Password validation depends on both fields
+    const passwordValid = yield* validatePassword(data.password, data.confirmPassword)
+    
+    // Age and compliance validation
+    const complianceValid = yield* validateAgeAndCompliance(data.age, data.agreedToTerms)
+    
+    return data
+  }).pipe(
+    Effect.withSpan('validate-form', {
+      attributes: {
+        'form.username': data.username,
+        'form.email': data.email,
+        'form.age': data.age,
+        'form.interests_count': data.interests.length
+      }
+    })
+  )
 
-// Usage
-const formData: FormData = {
-  username: 'john_doe',
-  email: 'john@example.com',
-  password: 'SecurePass123',
-  confirmPassword: 'SecurePass123',
-  age: 25,
-  interests: ['technology', 'music'],
-  agreedToTerms: true
-}
+// Form submission with comprehensive error handling
+const submitForm = (data: FormData): Effect.Effect<SubmissionResult, FormSubmissionError> =>
+  Effect.gen(function* () {
+    // Validate form first
+    const validatedData = yield* validateCompleteForm(data)
+    
+    // Submit to backend service
+    const submissionService = yield* FormSubmissionService
+    const result = yield* submissionService.submitRegistration(validatedData)
+    
+    return {
+      status: 'success',
+      userId: result.userId,
+      message: 'Registration completed successfully'
+    }
+  }).pipe(
+    Effect.catchTags({
+      ValidationError: (error) => 
+        Effect.succeed({
+          status: 'validation_failed',
+          message: error.message,
+          field: error.field
+        }),
+      EmailError: (error) => 
+        Effect.succeed({
+          status: 'email_error',
+          message: 'Email verification failed'
+        }),
+      ComplianceError: (error) => 
+        Effect.succeed({
+          status: 'compliance_error', 
+          message: error.message
+        })
+    }),
+    Effect.catchAll((error) => 
+      Effect.fail(new FormSubmissionError('Form submission failed', { cause: error }))
+    )
+  )
 
-console.log(isValidForm(formData)) // true
-console.log(validateFormWithFeedback(formData)) // { isValid: true, errors: [] }
+// Usage in application
+const handleFormSubmission = (formData: FormData) =>
+  Effect.gen(function* () {
+    yield* Effect.logInfo('Processing form submission')
+    
+    const result = yield* submitForm(formData)
+    
+    yield* Effect.logInfo(`Form submission result: ${result.status}`)
+    
+    return result
+  }).pipe(
+    Effect.provide(FormValidationService.Default),
+    Effect.provide(ComplianceService.Default),
+    Effect.provide(FormSubmissionService.Default)
+  )
 ```
 
 ## Advanced Features Deep Dive
 
-### Refinements: Type-Safe Predicates
+### Refinements with Effect Integration
 
-Refinements are predicates that also act as type guards, allowing TypeScript to narrow types:
+Refinements act as type guards while integrating with Effect's validation pipeline, providing both type safety and error handling:
 
-#### Basic Refinement Usage
-
-```typescript
-import { Predicate } from "effect"
-
-// Define a refinement
-const isString = (input: unknown): input is string => 
-  typeof input === 'string'
-
-const isPositiveNumber = (input: unknown): input is number =>
-  typeof input === 'number' && input > 0
-
-// TypeScript knows the type after refinement
-function processValue(input: unknown) {
-  if (isString(input)) {
-    // TypeScript knows input is string here
-    console.log(input.toUpperCase())
-  }
-  
-  if (isPositiveNumber(input)) {
-    // TypeScript knows input is number here
-    console.log(Math.sqrt(input))
-  }
-}
-```
-
-#### Real-World Refinement Example
+#### Effect-Based Type Refinement
 
 ```typescript
-import { Predicate } from "effect"
+import { Effect, Predicate, Schema } from "effect"
 
-// Domain types
+// Domain types with schemas for runtime validation
 interface User {
   id: string
   name: string
   email: string
+  createdAt: number
 }
 
 interface AdminUser extends User {
   adminLevel: number
   permissions: string[]
+  lastAdminAction: number
 }
 
-interface Premium extends User {
+interface PremiumUser extends User {
   subscriptionEnd: number
   features: string[]
+  billingStatus: 'active' | 'past_due' | 'cancelled'
 }
 
-// Refinement predicates
-const isUser = (input: unknown): input is User =>
-  typeof input === 'object' &&
-  input !== null &&
-  'id' in input &&
-  'name' in input &&
-  'email' in input &&
-  typeof (input as any).id === 'string' &&
-  typeof (input as any).name === 'string' &&
-  typeof (input as any).email === 'string'
-
-const isAdminUser = (input: unknown): input is AdminUser =>
-  isUser(input) &&
-  'adminLevel' in input &&
-  'permissions' in input &&
-  typeof (input as any).adminLevel === 'number' &&
-  Array.isArray((input as any).permissions)
-
-const isPremiumUser = (input: unknown): input is Premium =>
-  isUser(input) &&
-  'subscriptionEnd' in input &&
-  'features' in input &&
-  typeof (input as any).subscriptionEnd === 'number' &&
-  Array.isArray((input as any).features)
-
-// Usage with type narrowing
-function handleUserData(userData: unknown) {
-  if (isAdminUser(userData)) {
-    // TypeScript knows this is AdminUser
-    console.log(`Admin ${userData.name} has ${userData.permissions.length} permissions`)
-    return { type: 'admin', data: userData }
-  }
-  
-  if (isPremiumUser(userData)) {
-    // TypeScript knows this is Premium
-    console.log(`Premium user ${userData.name} has access to ${userData.features.join(', ')}`)
-    return { type: 'premium', data: userData }
-  }
-  
-  if (isUser(userData)) {
-    // TypeScript knows this is User
-    console.log(`Regular user: ${userData.name}`)
-    return { type: 'regular', data: userData }
-  }
-  
-  throw new Error('Invalid user data')
-}
-```
-
-### Advanced Composition: Complex Predicate Logic
-
-#### Predicate Factories
-
-```typescript
-import { Predicate, Number, String } from "effect"
-
-// Factory functions for creating predicates
-const createRangeValidator = (min: number, max: number) =>
-  (value: number): boolean => value >= min && value <= max
-
-const createLengthValidator = (minLength: number, maxLength: number) =>
-  (value: string): boolean => value.length >= minLength && value.length <= maxLength
-
-const createPatternValidator = (pattern: RegExp) =>
-  (value: string): boolean => pattern.test(value)
-
-// Domain-specific validators
-const createProductValidator = (config: {
-  priceRange: [number, number]
-  nameLength: [number, number]
-  requiredCategories: string[]
-}) => {
-  const isValidPrice = createRangeValidator(...config.priceRange)
-  const isValidName = createLengthValidator(...config.nameLength)
-  const isValidCategory = (category: string) => 
-    config.requiredCategories.includes(category)
-
-  return Predicate.struct({
-    price: isValidPrice,
-    name: isValidName,
-    category: isValidCategory
+// Effect-based refinement with service validation
+const validateUser = (input: unknown): Effect.Effect<User, ValidationError> =>
+  Effect.gen(function* () {
+    // Basic type checking
+    const isValidShape = typeof input === 'object' &&
+                        input !== null &&
+                        'id' in input &&
+                        'name' in input &&
+                        'email' in input
+    
+    if (!isValidShape) {
+      return yield* Effect.fail(new ValidationError('Invalid user shape'))
+    }
+    
+    const candidate = input as User
+    
+    // Enhanced validation with services
+    const userService = yield* UserService
+    const emailValid = yield* userService.validateEmail(candidate.email)
+    const userExists = yield* userService.userExists(candidate.id)
+    
+    if (!emailValid) {
+      return yield* Effect.fail(new ValidationError('Invalid email format'))
+    }
+    
+    if (!userExists) {
+      return yield* Effect.fail(new ValidationError('User not found in system'))
+    }
+    
+    return candidate
   })
-}
 
-// Usage
-const basicProductValidator = createProductValidator({
-  priceRange: [0, 1000],
-  nameLength: [1, 50],
-  requiredCategories: ['electronics', 'books', 'clothing']
-})
+const refineToAdminUser = (user: User): Effect.Effect<AdminUser, RefinementError> =>
+  Effect.gen(function* () {
+    // Check for admin-specific fields
+    const candidate = user as any
+    
+    if (typeof candidate.adminLevel !== 'number' || 
+        !Array.isArray(candidate.permissions)) {
+      return yield* Effect.fail(new RefinementError('Not an admin user'))
+    }
+    
+    // Validate admin permissions with service
+    const authService = yield* AuthorizationService
+    const hasValidPermissions = yield* authService.validateAdminPermissions(candidate.permissions)
+    
+    if (!hasValidPermissions) {
+      return yield* Effect.fail(new RefinementError('Invalid admin permissions'))
+    }
+    
+    // Check if admin is currently active
+    const isActiveAdmin = Date.now() - candidate.lastAdminAction < 24 * 60 * 60 * 1000 // 24 hours
+    
+    if (!isActiveAdmin) {
+      return yield* Effect.fail(new RefinementError('Admin user is not active'))
+    }
+    
+    return candidate as AdminUser
+  })
 
-const premiumProductValidator = createProductValidator({
-  priceRange: [100, 10000],
-  nameLength: [5, 100],
-  requiredCategories: ['luxury', 'premium', 'exclusive']
-})
+const refineToPremiumUser = (user: User): Effect.Effect<PremiumUser, RefinementError> =>
+  Effect.gen(function* () {
+    const candidate = user as any
+    
+    if (typeof candidate.subscriptionEnd !== 'number' ||
+        !Array.isArray(candidate.features) ||
+        !['active', 'past_due', 'cancelled'].includes(candidate.billingStatus)) {
+      return yield* Effect.fail(new RefinementError('Not a premium user'))
+    }
+    
+    // Validate subscription status
+    const billingService = yield* BillingService
+    const subscriptionActive = yield* billingService.checkSubscriptionStatus(user.id)
+    
+    if (!subscriptionActive && candidate.billingStatus === 'active') {
+      return yield* Effect.fail(new RefinementError('Subscription status mismatch'))
+    }
+    
+    return candidate as PremiumUser
+  })
+
+// Complete user processing pipeline with refinement
+const processUserData = (rawData: unknown): Effect.Effect<UserProcessingResult, ValidationError | RefinementError> =>
+  Effect.gen(function* () {
+    // First, validate as basic user
+    const user = yield* validateUser(rawData)
+    
+    // Try to refine to specific user types
+    const adminResult = yield* refineToAdminUser(user).pipe(
+      Effect.map((admin) => ({ type: 'admin' as const, user: admin })),
+      Effect.catchAll(() => Effect.succeed(null))
+    )
+    
+    if (adminResult) {
+      yield* Effect.logInfo(`Processing admin user: ${adminResult.user.name}`)
+      return adminResult
+    }
+    
+    const premiumResult = yield* refineToPremiumUser(user).pipe(
+      Effect.map((premium) => ({ type: 'premium' as const, user: premium })),
+      Effect.catchAll(() => Effect.succeed(null))
+    )
+    
+    if (premiumResult) {
+      yield* Effect.logInfo(`Processing premium user: ${premiumResult.user.name}`)
+      return premiumResult
+    }
+    
+    // Default to regular user
+    yield* Effect.logInfo(`Processing regular user: ${user.name}`)
+    return { type: 'regular' as const, user }
+  }).pipe(
+    Effect.withSpan('process-user-data', {
+      attributes: {
+        'user.processing_started': Date.now().toString()
+      }
+    })
+  )
 ```
 
-#### Conditional Predicate Logic
+#### Advanced Type-Safe Predicate Composition
 
 ```typescript
-import { Predicate, pipe } from "effect"
+import { Effect, Predicate, Array as Arr } from "effect"
 
-// Conditional validation based on other fields
-const createConditionalValidator = <T>(
-  condition: Predicate.Predicate<T>,
-  thenPredicate: Predicate.Predicate<T>,
-  elsePredicate: Predicate.Predicate<T>
-) => (value: T): boolean => {
-  if (condition(value)) {
-    return thenPredicate(value)
-  }
-  return elsePredicate(value)
+// Complex predicate composition with Effect integration
+const createUserTypeValidator = <T extends User>(
+  typeGuard: (user: User) => user is T,
+  additionalValidation: (user: T) => Effect.Effect<boolean, ValidationError>
+) => {
+  return (user: User): Effect.Effect<T, RefinementError | ValidationError> =>
+    Effect.gen(function* () {
+      if (!typeGuard(user)) {
+        return yield* Effect.fail(new RefinementError('Type guard failed'))
+      }
+      
+      const typedUser = user as T
+      const isAdditionallyValid = yield* additionalValidation(typedUser)
+      
+      if (!isAdditionallyValid) {
+        return yield* Effect.fail(new ValidationError('Additional validation failed'))
+      }
+      
+      return typedUser
+    })
 }
 
-interface OrderItem {
-  type: 'physical' | 'digital'
-  price: number
-  weight?: number
-  downloadUrl?: string
-  shippingRequired: boolean
-}
-
-// Conditional validation based on item type
-const isValidOrderItem = createConditionalValidator<OrderItem>(
-  (item) => item.type === 'physical',
-  // Physical item validation
-  Predicate.and(
-    (item) => typeof item.weight === 'number' && item.weight > 0,
-    (item) => item.shippingRequired === true
-  ),
-  // Digital item validation
-  Predicate.and(
-    (item) => typeof item.downloadUrl === 'string' && item.downloadUrl.length > 0,
-    (item) => item.shippingRequired === false
-  )
+// Usage with factory pattern
+const validateAdminUser = createUserTypeValidator<AdminUser>(
+  (user): user is AdminUser => 
+    'adminLevel' in user && 'permissions' in user,
+  (admin) => Effect.gen(function* () {
+    const authService = yield* AuthorizationService
+    const permissionsValid = yield* authService.validateAdminPermissions(admin.permissions)
+    const levelValid = admin.adminLevel > 0 && admin.adminLevel <= 10
+    return permissionsValid && levelValid
+  })
 )
 
-// More complex conditional logic
-interface PaymentData {
-  method: 'credit_card' | 'paypal' | 'bank_transfer'
-  amount: number
-  cardNumber?: string
-  expiryDate?: string
-  paypalEmail?: string
-  bankAccount?: string
-  currency: string
-}
+const validatePremiumUser = createUserTypeValidator<PremiumUser>(
+  (user): user is PremiumUser => 
+    'subscriptionEnd' in user && 'billingStatus' in user,
+  (premium) => Effect.gen(function* () {
+    const billingService = yield* BillingService
+    const subscriptionValid = yield* billingService.checkSubscriptionStatus(premium.id)
+    const notExpired = premium.subscriptionEnd > Date.now()
+    return subscriptionValid && notExpired
+  })
+)
 
-const isValidPayment = (payment: PaymentData): boolean => {
-  const baseValidation = payment.amount > 0 && 
-                        ['USD', 'EUR', 'GBP'].includes(payment.currency)
-  
-  if (!baseValidation) return false
+// Batch user processing with refined types
+const processUserBatch = (users: User[]): Effect.Effect<ProcessedUserBatch, ProcessingError> =>
+  Effect.gen(function* () {
+    const results = yield* Effect.partition(
+      users,
+      (user) => Effect.gen(function* () {
+        // Try admin validation first
+        const adminResult = yield* validateAdminUser(user).pipe(
+          Effect.map((admin) => ({ type: 'admin' as const, user: admin })),
+          Effect.catchAll(() => Effect.succeed(null))
+        )
+        
+        if (adminResult) return adminResult
+        
+        // Try premium validation
+        const premiumResult = yield* validatePremiumUser(user).pipe(
+          Effect.map((premium) => ({ type: 'premium' as const, user: premium })),
+          Effect.catchAll(() => Effect.succeed(null))
+        )
+        
+        if (premiumResult) return premiumResult
+        
+        // Default to regular
+        return { type: 'regular' as const, user }
+      })
+    )
+    
+    const [errors, processed] = results
+    
+    return {
+      totalProcessed: processed.length,
+      errors: errors.length,
+      adminUsers: processed.filter(p => p.type === 'admin').length,
+      premiumUsers: processed.filter(p => p.type === 'premium').length,
+      regularUsers: processed.filter(p => p.type === 'regular').length,
+      results: processed
+    }
+  }).pipe(
+    Effect.withSpan('process-user-batch', {
+      attributes: {
+        'batch.size': users.length.toString()
+      }
+    })
+  )
+```
 
-  switch (payment.method) {
-    case 'credit_card':
-      return !!(payment.cardNumber && 
-               payment.expiryDate &&
-               /^\d{16}$/.test(payment.cardNumber.replace(/\s/g, '')))
+### Advanced Predicate Factories with Effect Integration
+
+Creating sophisticated predicate factories that integrate with Effect's service layer and error handling:
+
+#### Effect-Based Predicate Factories
+
+```typescript
+import { Effect, Predicate, Number, String } from "effect"
+
+// Service-aware predicate factory
+const createValidationFactory = <T, E>(config: {
+  name: string
+  service: Context.Tag<any, any>
+}) => {
+  return {
+    createRangeValidator: (min: number, max: number, field: keyof T) =>
+      (value: T): Effect.Effect<boolean, E> =>
+        Effect.gen(function* () {
+          const fieldValue = value[field] as number
+          const service = yield* config.service
+          
+          const inRange = fieldValue >= min && fieldValue <= max
+          if (!inRange) {
+            yield* Effect.logWarning(`${config.name}: ${String(field)} out of range: ${fieldValue}`)
+            return false
+          }
+          
+          // Additional service validation
+          const serviceValid = yield* service.validateRange(fieldValue, min, max)
+          return serviceValid
+        }),
     
-    case 'paypal':
-      return !!(payment.paypalEmail && 
-               payment.paypalEmail.includes('@'))
+    createPatternValidator: (pattern: RegExp, field: keyof T) =>
+      (value: T): Effect.Effect<boolean, E> =>
+        Effect.gen(function* () {
+          const fieldValue = value[field] as string
+          const service = yield* config.service
+          
+          const matchesPattern = pattern.test(fieldValue)
+          if (!matchesPattern) {
+            yield* Effect.logWarning(`${config.name}: ${String(field)} doesn't match pattern`)
+            return false
+          }
+          
+          // Additional service validation
+          const serviceValid = yield* service.validatePattern(fieldValue, pattern)
+          return serviceValid
+        }),
     
-    case 'bank_transfer':
-      return !!(payment.bankAccount && 
-               payment.bankAccount.length >= 10)
-    
-    default:
-      return false
+    createConditionalValidator: <K extends keyof T>(
+      conditionField: K,
+      conditionValue: T[K],
+      thenValidator: (value: T) => Effect.Effect<boolean, E>,
+      elseValidator: (value: T) => Effect.Effect<boolean, E>
+    ) =>
+      (value: T): Effect.Effect<boolean, E> =>
+        Effect.gen(function* () {
+          if (value[conditionField] === conditionValue) {
+            return yield* thenValidator(value)
+          } else {
+            return yield* elseValidator(value)
+          }
+        })
   }
 }
+
+// Domain-specific validator factories
+interface Product {
+  id: string
+  name: string
+  price: number
+  category: string
+  type: 'physical' | 'digital'
+  weight?: number
+  downloadUrl?: string
+}
+
+class ProductValidationService extends Context.Tag("ProductValidationService")<
+  ProductValidationService,
+  {
+    validateRange: (value: number, min: number, max: number) => Effect.Effect<boolean, ValidationError>
+    validatePattern: (value: string, pattern: RegExp) => Effect.Effect<boolean, ValidationError>
+    validateCategory: (category: string) => Effect.Effect<boolean, ValidationError>
+    validateDigitalProduct: (product: Product) => Effect.Effect<boolean, ValidationError>
+  }
+>() {}
+
+const productValidatorFactory = createValidationFactory<Product, ValidationError>({
+  name: 'ProductValidator',
+  service: ProductValidationService
+})
+
+// Create specific validators using the factory
+const createProductValidationPipeline = (config: {
+  priceRange: [number, number]
+  nameLength: [number, number]
+  allowedCategories: string[]
+}) => {
+  const priceValidator = productValidatorFactory.createRangeValidator(
+    ...config.priceRange,
+    'price'
+  )
+  
+  const nameValidator = productValidatorFactory.createPatternValidator(
+    new RegExp(`^.{${config.nameLength[0]},${config.nameLength[1]}}$`),
+    'name'
+  )
+  
+  const typeBasedValidator = productValidatorFactory.createConditionalValidator(
+    'type',
+    'digital' as const,
+    // Digital product validation
+    (product: Product) => Effect.gen(function* () {
+      const service = yield* ProductValidationService
+      return yield* service.validateDigitalProduct(product)
+    }),
+    // Physical product validation
+    (product: Product) => Effect.gen(function* () {
+      const hasWeight = typeof product.weight === 'number' && product.weight > 0
+      if (!hasWeight) {
+        return yield* Effect.fail(new ValidationError('Physical product must have weight'))
+      }
+      return true
+    })
+  )
+  
+  // Combine all validators
+  return (product: Product): Effect.Effect<Product, ValidationError> =>
+    Effect.gen(function* () {
+      const priceValid = yield* priceValidator(product)
+      const nameValid = yield* nameValidator(product)
+      const typeValid = yield* typeBasedValidator(product)
+      
+      if (!priceValid || !nameValid || !typeValid) {
+        return yield* Effect.fail(new ValidationError('Product validation failed'))
+      }
+      
+      // Category validation with service
+      const service = yield* ProductValidationService
+      const categoryValid = yield* service.validateCategory(product.category)
+      
+      if (!categoryValid) {
+        return yield* Effect.fail(new ValidationError(`Invalid category: ${product.category}`))
+      }
+      
+      return product
+    }).pipe(
+      Effect.withSpan('validate-product-pipeline', {
+        attributes: {
+          'product.id': product.id,
+          'product.type': product.type,
+          'validation.config': JSON.stringify(config)
+        }
+      })
+    )
+}
+
+// Usage with different validation configurations
+const basicProductValidator = createProductValidationPipeline({
+  priceRange: [1, 1000],
+  nameLength: [3, 50],
+  allowedCategories: ['electronics', 'books', 'clothing']
+})
+
+const premiumProductValidator = createProductValidationPipeline({
+  priceRange: [100, 50000],
+  nameLength: [5, 200],
+  allowedCategories: ['luxury', 'premium', 'exclusive', 'limited-edition']
+})
+
+// Batch validation with different configurations
+const validateProductBatch = (
+  products: Product[],
+  validator: (product: Product) => Effect.Effect<Product, ValidationError>
+): Effect.Effect<ValidationBatchResult, ValidationError> =>
+  Effect.gen(function* () {
+    const startTime = Date.now()
+    
+    const results = yield* Effect.partition(products, validator)
+    const [errors, validProducts] = results
+    
+    const endTime = Date.now()
+    const processingTime = endTime - startTime
+    
+    yield* Effect.logInfo(`Validated ${products.length} products in ${processingTime}ms`)
+    
+    return {
+      totalProducts: products.length,
+      validProducts: validProducts.length,
+      errorCount: errors.length,
+      processingTimeMs: processingTime,
+      validatedProducts: validProducts,
+      errors: errors
+    }
+  }).pipe(
+    Effect.withSpan('validate-product-batch', {
+      attributes: {
+        'batch.size': products.length.toString(),
+        'batch.start_time': Date.now().toString()
+      }
+    })
+  )
 ```
 
 ## Practical Patterns & Best Practices
 
-### Pattern 1: Predicate Builder Pattern
+### Pattern 1: Effect-Based Predicate Builder
 
-Create fluent APIs for building complex predicates:
+Create fluent APIs for building complex predicates that integrate with Effect services:
 
 ```typescript
-import { Predicate } from "effect"
+import { Effect, Predicate, Context } from "effect"
 
-class PredicateBuilder<T> {
-  private predicates: Predicate.Predicate<T>[] = []
+class EffectPredicateBuilder<T, E> {
+  private validators: Array<(value: T) => Effect.Effect<boolean, E>> = []
+  private logicalOperator: 'and' | 'or' = 'and'
 
-  static for<T>(): PredicateBuilder<T> {
-    return new PredicateBuilder<T>()
+  static for<T, E = never>(): EffectPredicateBuilder<T, E> {
+    return new EffectPredicateBuilder<T, E>()
   }
 
-  where(predicate: Predicate.Predicate<T>): this {
-    this.predicates.push(predicate)
+  where(validator: (value: T) => Effect.Effect<boolean, E>): this {
+    this.validators.push(validator)
     return this
   }
 
-  and(predicate: Predicate.Predicate<T>): this {
-    return this.where(predicate)
+  and(validator: (value: T) => Effect.Effect<boolean, E>): this {
+    return this.where(validator)
   }
 
-  or(otherBuilder: PredicateBuilder<T>): PredicateBuilder<T> {
-    const combined = PredicateBuilder.for<T>()
-    combined.predicates = [
-      this.build(),
-      otherBuilder.build()
-    ]
+  or(otherBuilder: EffectPredicateBuilder<T, E>): EffectPredicateBuilder<T, E> {
+    const combined = EffectPredicateBuilder.for<T, E>()
+    combined.validators = [this.build(), otherBuilder.build()]
+    combined.logicalOperator = 'or'
     return combined
   }
 
-  not(): PredicateBuilder<T> {
-    const negated = PredicateBuilder.for<T>()
-    negated.predicates = [Predicate.not(this.build())]
+  not(): EffectPredicateBuilder<T, E> {
+    const negated = EffectPredicateBuilder.for<T, E>()
+    negated.validators = [
+      (value: T) => Effect.gen(function* () {
+        const result = yield* this.build()(value)
+        return !result
+      }.bind(this))
+    ]
     return negated
   }
 
-  build(): Predicate.Predicate<T> {
-    if (this.predicates.length === 0) {
-      return () => true
+  build(): (value: T) => Effect.Effect<boolean, E> {
+    if (this.validators.length === 0) {
+      return () => Effect.succeed(true)
     }
-    return this.predicates.reduce((acc, pred) => 
-      Predicate.and(acc, pred)
-    )
+
+    return (value: T): Effect.Effect<boolean, E> =>
+      Effect.gen(function* () {
+        if (this.logicalOperator === 'and') {
+          // All validators must pass
+          for (const validator of this.validators) {
+            const result = yield* validator(value)
+            if (!result) return false
+          }
+          return true
+        } else {
+          // At least one validator must pass
+          for (const validator of this.validators) {
+            const result = yield* validator(value).pipe(
+              Effect.catchAll(() => Effect.succeed(false))
+            )
+            if (result) return true
+          }
+          return false
+        }
+      }.bind(this))
+  }
+
+  buildWithDetails(): (value: T) => Effect.Effect<ValidationResult<T>, E> {
+    return (value: T): Effect.Effect<ValidationResult<T>, E> =>
+      Effect.gen(function* () {
+        const results: Array<{ validator: string; passed: boolean; error?: E }> = []
+        let overallResult = this.logicalOperator === 'and'
+
+        for (let i = 0; i < this.validators.length; i++) {
+          const validator = this.validators[i]
+          const result = yield* validator(value).pipe(
+            Effect.map(success => ({ success, error: null as E | null })),
+            Effect.catchAll(error => Effect.succeed({ success: false, error }))
+          )
+
+          results.push({
+            validator: `validator_${i}`,
+            passed: result.success,
+            error: result.error || undefined
+          })
+
+          if (this.logicalOperator === 'and') {
+            overallResult = overallResult && result.success
+          } else {
+            overallResult = overallResult || result.success
+          }
+        }
+
+        return {
+          value,
+          passed: overallResult,
+          validatorResults: results,
+          timestamp: Date.now()
+        }
+      }.bind(this))
   }
 }
 
-// Usage
+// Product validation with services
 interface Product {
+  id: string
   name: string
   price: number
   category: string
@@ -759,222 +1455,661 @@ interface Product {
   rating: number
 }
 
-const expensiveElectronics = PredicateBuilder
-  .for<Product>()
-  .where(p => p.category === 'electronics')
-  .and(p => p.price > 500)
-  .and(p => p.inStock)
-  .build()
+class ProductValidationService extends Context.Tag("ProductValidationService")<
+  ProductValidationService,
+  {
+    validatePrice: (price: number) => Effect.Effect<boolean, ValidationError>
+    checkInventoryStatus: (productId: string) => Effect.Effect<boolean, InventoryError>
+    validateCategory: (category: string) => Effect.Effect<boolean, ValidationError>
+  }
+>() {}
 
-const popularItems = PredicateBuilder
-  .for<Product>()
-  .where(p => p.rating >= 4.5)
-  .and(p => p.inStock)
-  .build()
+// Build complex product validation chains
+const buildExpensiveElectronicsValidator = () =>
+  EffectPredicateBuilder
+    .for<Product, ValidationError | InventoryError>()
+    .where((product) => Effect.gen(function* () {
+      const service = yield* ProductValidationService
+      return product.category === 'electronics'
+    }))
+    .and((product) => Effect.gen(function* () {
+      const service = yield* ProductValidationService
+      const priceValid = yield* service.validatePrice(product.price)
+      return priceValid && product.price > 500
+    }))
+    .and((product) => Effect.gen(function* () {
+      const service = yield* ProductValidationService
+      const inStock = yield* service.checkInventoryStatus(product.id)
+      return inStock && product.inStock
+    }))
+    .build()
 
-const premiumProducts = PredicateBuilder
-  .for<Product>()
-  .where(expensiveElectronics)
-  .or(PredicateBuilder.for<Product>().where(popularItems))
-  .build()
+const buildPopularItemsValidator = () =>
+  EffectPredicateBuilder
+    .for<Product, ValidationError>()
+    .where((product) => Effect.succeed(product.rating >= 4.5))
+    .and((product) => Effect.gen(function* () {
+      const service = yield* ProductValidationService
+      return yield* service.checkInventoryStatus(product.id)
+    }))
+    .build()
+
+// Combine validators with OR logic
+const buildPremiumProductsValidator = () => {
+  const expensiveElectronicsBuilder = EffectPredicateBuilder
+    .for<Product, ValidationError | InventoryError>()
+    .where(buildExpensiveElectronicsValidator())
+    
+  const popularItemsBuilder = EffectPredicateBuilder
+    .for<Product, ValidationError | InventoryError>()
+    .where(buildPopularItemsValidator())
+    
+  return expensiveElectronicsBuilder.or(popularItemsBuilder).build()
+}
+
+// Usage in business logic
+const filterPremiumProducts = (products: Product[]): Effect.Effect<Product[], ValidationError | InventoryError> =>
+  Effect.gen(function* () {
+    const validator = buildPremiumProductsValidator()
+    
+    const validProducts = yield* Effect.filter(
+      products,
+      (product) => Effect.gen(function* () {
+        const isValid = yield* validator(product)
+        return isValid
+      })
+    )
+    
+    return validProducts
+  }).pipe(
+    Effect.withSpan('filter-premium-products', {
+      attributes: {
+        'products.total': products.length.toString()
+      }
+    })
+  )
 ```
 
-### Pattern 2: Validation Pipeline
+### Pattern 2: Effect-Based Validation Pipeline
 
-Create reusable validation pipelines for complex data processing:
+Create sophisticated validation pipelines with Effect services, error recovery, and comprehensive logging:
 
 ```typescript
-import { Predicate, pipe } from "effect"
+import { Effect, Context, Array as Arr } from "effect"
 
-interface ValidationStep<T> {
+interface ValidationStep<T, E> {
   name: string
-  predicate: Predicate.Predicate<T>
+  validator: (data: T) => Effect.Effect<boolean, E>
   errorMessage: string
+  critical: boolean // Whether failure should stop the pipeline
 }
 
 interface ValidationResult<T> {
   isValid: boolean
-  errors: string[]
   data: T
+  errors: ValidationError[]
+  warnings: ValidationWarning[]
+  executionTimeMs: number
+  stepsExecuted: number
 }
 
-class ValidationPipeline<T> {
-  private steps: ValidationStep<T>[] = []
+class EffectValidationPipeline<T, E> {
+  private steps: ValidationStep<T, E>[] = []
+  private onError?: (error: E, step: ValidationStep<T, E>, data: T) => Effect.Effect<void, never>
+  private onSuccess?: (data: T, results: ValidationResult<T>) => Effect.Effect<void, never>
 
-  static create<T>(): ValidationPipeline<T> {
-    return new ValidationPipeline<T>()
+  static create<T, E = never>(): EffectValidationPipeline<T, E> {
+    return new EffectValidationPipeline<T, E>()
   }
 
   addStep(
-    name: string, 
-    predicate: Predicate.Predicate<T>, 
-    errorMessage: string
+    name: string,
+    validator: (data: T) => Effect.Effect<boolean, E>,
+    errorMessage: string,
+    critical: boolean = false
   ): this {
-    this.steps.push({ name, predicate, errorMessage })
+    this.steps.push({ name, validator, errorMessage, critical })
     return this
   }
 
-  validate(data: T): ValidationResult<T> {
-    const errors: string[] = []
-
-    for (const step of this.steps) {
-      if (!step.predicate(data)) {
-        errors.push(`${step.name}: ${step.errorMessage}`)
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      data
-    }
+  onValidationError(
+    handler: (error: E, step: ValidationStep<T, E>, data: T) => Effect.Effect<void, never>
+  ): this {
+    this.onError = handler
+    return this
   }
 
-  // Fail-fast validation (stops at first error)
-  validateFast(data: T): ValidationResult<T> {
-    for (const step of this.steps) {
-      if (!step.predicate(data)) {
-        return {
-          isValid: false,
-          errors: [`${step.name}: ${step.errorMessage}`],
-          data
+  onValidationSuccess(
+    handler: (data: T, results: ValidationResult<T>) => Effect.Effect<void, never>
+  ): this {
+    this.onSuccess = handler
+    return this
+  }
+
+  validate(data: T): Effect.Effect<ValidationResult<T>, never> {
+    return Effect.gen(function* () {
+      const startTime = Date.now()
+      const errors: ValidationError[] = []
+      const warnings: ValidationWarning[] = []
+      let stepsExecuted = 0
+      let shouldContinue = true
+
+      for (const step of this.steps) {
+        if (!shouldContinue) break
+
+        stepsExecuted++
+        
+        const stepResult = yield* step.validator(data).pipe(
+          Effect.map(success => ({ success, error: null as E | null })),
+          Effect.catchAll(error => Effect.succeed({ success: false, error }))
+        )
+
+        if (!stepResult.success) {
+          const validationError = new ValidationError({
+            step: step.name,
+            message: step.errorMessage,
+            data: data,
+            originalError: stepResult.error
+          })
+
+          if (step.critical) {
+            errors.push(validationError)
+            shouldContinue = false
+          } else {
+            warnings.push(new ValidationWarning({
+              step: step.name,
+              message: step.errorMessage,
+              data: data
+            }))
+          }
+
+          // Execute error handler if provided
+          if (this.onError && stepResult.error) {
+            yield* this.onError(stepResult.error, step, data)
+          }
         }
       }
-    }
 
-    return {
-      isValid: true,
-      errors: [],
-      data
-    }
+      const endTime = Date.now()
+      const result: ValidationResult<T> = {
+        isValid: errors.length === 0,
+        data,
+        errors,
+        warnings,
+        executionTimeMs: endTime - startTime,
+        stepsExecuted
+      }
+
+      // Execute success handler if validation passed
+      if (result.isValid && this.onSuccess) {
+        yield* this.onSuccess(data, result)
+      }
+
+      return result
+    }.bind(this)).pipe(
+      Effect.withSpan('validation-pipeline', {
+        attributes: {
+          'pipeline.steps_total': this.steps.length.toString(),
+          'pipeline.start_time': Date.now().toString()
+        }
+      })
+    )
+  }
+
+  // Parallel validation (non-blocking)
+  validateParallel(data: T): Effect.Effect<ValidationResult<T>, never> {
+    return Effect.gen(function* () {
+      const startTime = Date.now()
+      
+      // Execute all steps in parallel
+      const stepResults = yield* Effect.all(
+        this.steps.map((step, index) =>
+          Effect.gen(function* () {
+            const result = yield* step.validator(data).pipe(
+              Effect.map(success => ({ success, error: null as E | null, stepIndex: index })),
+              Effect.catchAll(error => Effect.succeed({ success: false, error, stepIndex: index }))
+            )
+            return { ...result, step }
+          })
+        )
+      )
+
+      const errors: ValidationError[] = []
+      const warnings: ValidationWarning[] = []
+
+      for (const stepResult of stepResults) {
+        if (!stepResult.success) {
+          const validationError = new ValidationError({
+            step: stepResult.step.name,
+            message: stepResult.step.errorMessage,
+            data: data,
+            originalError: stepResult.error
+          })
+
+          if (stepResult.step.critical) {
+            errors.push(validationError)
+          } else {
+            warnings.push(new ValidationWarning({
+              step: stepResult.step.name,
+              message: stepResult.step.errorMessage,
+              data: data
+            }))
+          }
+        }
+      }
+
+      const endTime = Date.now()
+      return {
+        isValid: errors.length === 0,
+        data,
+        errors,
+        warnings,
+        executionTimeMs: endTime - startTime,
+        stepsExecuted: this.steps.length
+      }
+    }.bind(this))
   }
 }
 
-// Usage example: User registration validation
+// Usage with user registration and external services
 interface UserRegistration {
   username: string
   email: string
   password: string
   age: number
+  termsAccepted: boolean
 }
 
-const userRegistrationPipeline = ValidationPipeline
-  .create<UserRegistration>()
-  .addStep(
-    'username',
-    (user) => user.username.length >= 3 && user.username.length <= 20,
-    'Username must be between 3 and 20 characters'
-  )
-  .addStep(
-    'email',
-    (user) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email),
-    'Please provide a valid email address'
-  )
-  .addStep(
-    'password',
-    (user) => user.password.length >= 8 && /(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(user.password),
-    'Password must be at least 8 characters with uppercase, lowercase, and number'
-  )
-  .addStep(
-    'age',
-    (user) => user.age >= 13 && user.age <= 120,
-    'Age must be between 13 and 120'
-  )
+class UserValidationService extends Context.Tag("UserValidationService")<
+  UserValidationService,
+  {
+    checkUsernameAvailable: (username: string) => Effect.Effect<boolean, ValidationError>
+    validateEmailDomain: (email: string) => Effect.Effect<boolean, ValidationError>
+    checkPasswordStrength: (password: string) => Effect.Effect<boolean, ValidationError>
+    validateAge: (age: number) => Effect.Effect<boolean, ComplianceError>
+  }
+>() {}
 
-// Validation in action
-const registrationData: UserRegistration = {
-  username: 'john_doe',
-  email: 'john@example.com',
-  password: 'SecurePass123',
-  age: 25
-}
+// Build comprehensive user registration pipeline
+const createUserRegistrationPipeline = () =>
+  EffectValidationPipeline
+    .create<UserRegistration, ValidationError | ComplianceError>()
+    .addStep(
+      'username-format',
+      (user) => Effect.succeed(
+        user.username.length >= 3 && 
+        user.username.length <= 20 &&
+        /^[a-zA-Z0-9_]+$/.test(user.username)
+      ),
+      'Username must be 3-20 characters, alphanumeric and underscores only',
+      true // Critical - stop if this fails
+    )
+    .addStep(
+      'username-availability',
+      (user) => Effect.gen(function* () {
+        const service = yield* UserValidationService
+        return yield* service.checkUsernameAvailable(user.username)
+      }),
+      'Username is already taken',
+      true
+    )
+    .addStep(
+      'email-format',
+      (user) => Effect.succeed(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email)),
+      'Please provide a valid email address',
+      true
+    )
+    .addStep(
+      'email-domain',
+      (user) => Effect.gen(function* () {
+        const service = yield* UserValidationService
+        return yield* service.validateEmailDomain(user.email)
+      }),
+      'Email domain is not allowed',
+      false // Warning only
+    )
+    .addStep(
+      'password-strength',
+      (user) => Effect.gen(function* () {
+        const service = yield* UserValidationService
+        return yield* service.checkPasswordStrength(user.password)
+      }),
+      'Password does not meet security requirements',
+      true
+    )
+    .addStep(
+      'age-compliance',
+      (user) => Effect.gen(function* () {
+        const service = yield* UserValidationService
+        return yield* service.validateAge(user.age)
+      }),
+      'Age does not meet legal requirements',
+      true
+    )
+    .addStep(
+      'terms-accepted',
+      (user) => Effect.succeed(user.termsAccepted === true),
+      'You must accept the terms and conditions',
+      true
+    )
+    .onValidationError((
+      error: ValidationError | ComplianceError,
+      step: ValidationStep<UserRegistration, ValidationError | ComplianceError>,
+      data: UserRegistration
+    ) => Effect.gen(function* () {
+      yield* Effect.logWarning(`Validation failed at step ${step.name} for user ${data.username}`)
+      // Could send to analytics, audit logs, etc.
+    }))
+    .onValidationSuccess((
+      data: UserRegistration,
+      results: ValidationResult<UserRegistration>
+    ) => Effect.gen(function* () {
+      yield* Effect.logInfo(`User registration validation passed for ${data.username} in ${results.executionTimeMs}ms`)
+    }))
 
-const result = userRegistrationPipeline.validate(registrationData)
-console.log(result)
-// { isValid: true, errors: [], data: {...} }
+// Usage in registration flow
+const processUserRegistration = (userData: UserRegistration): Effect.Effect<RegistrationResult, RegistrationError> =>
+  Effect.gen(function* () {
+    const pipeline = createUserRegistrationPipeline()
+    const validationResult = yield* pipeline.validate(userData)
+    
+    if (!validationResult.isValid) {
+      return {
+        status: 'validation_failed',
+        errors: validationResult.errors.map(e => e.message),
+        warnings: validationResult.warnings.map(w => w.message)
+      }
+    }
+    
+    // Proceed with user creation
+    const userService = yield* UserService
+    const newUser = yield* userService.createUser(userData)
+    
+    return {
+      status: 'success',
+      userId: newUser.id,
+      warnings: validationResult.warnings.map(w => w.message)
+    }
+  }).pipe(
+    Effect.catchAll((error) => 
+      Effect.fail(new RegistrationError('Registration failed', { cause: error }))
+    ),
+    Effect.provide(UserValidationService.Default),
+    Effect.provide(UserService.Default)
+  )
 ```
 
-### Pattern 3: Performance-Optimized Predicates
+### Pattern 3: High-Performance Effect-Based Validation
 
-Optimize predicate performance for high-volume operations:
+Optimize validation performance using Effect's caching, batching, and concurrency features:
 
 ```typescript
-import { Predicate } from "effect"
+import { Effect, Cache, Duration, Array as Arr } from "effect"
 
-// Memoized predicates for expensive operations
-const createMemoizedPredicate = <T>(
-  predicate: Predicate.Predicate<T>,
-  keyExtractor: (value: T) => string = (value) => JSON.stringify(value)
-): Predicate.Predicate<T> => {
-  const cache = new Map<string, boolean>()
-  
-  return (value: T): boolean => {
-    const key = keyExtractor(value)
-    
-    if (cache.has(key)) {
-      return cache.get(key)!
-    }
-    
-    const result = predicate(value)
-    cache.set(key, result)
-    return result
+// Service for caching validation results
+class ValidationCacheService extends Context.Tag("ValidationCacheService")<
+  ValidationCacheService,
+  {
+    cache: Cache.Cache<string, boolean, ValidationError>
   }
+>() {
+  static live = Effect.gen(function* () {
+    const cache = yield* Cache.make({
+      capacity: 10000,
+      timeToLive: Duration.minutes(15),
+      lookup: (key: string) => Effect.fail(new ValidationError(`Cache miss for key: ${key}`))
+    })
+    
+    return { cache }
+  }).pipe(
+    Effect.map(({ cache }) => ({ cache }))
+  )
 }
 
-// Short-circuit predicates for better performance
-const createShortCircuitPredicate = <T>(
-  predicates: Predicate.Predicate<T>[],
-  operator: 'and' | 'or' = 'and'
-): Predicate.Predicate<T> => {
-  return (value: T): boolean => {
-    if (operator === 'and') {
-      // Short-circuit on first false
-      return predicates.every(predicate => predicate(value))
-    } else {
-      // Short-circuit on first true
-      return predicates.some(predicate => predicate(value))
-    }
-  }
+// High-performance validation factory with caching
+const createCachedValidator = <T, E>(
+  name: string,
+  validator: (value: T) => Effect.Effect<boolean, E>,
+  keyExtractor: (value: T) => string
+) => {
+  return (value: T): Effect.Effect<boolean, E | ValidationError> =>
+    Effect.gen(function* () {
+      const cacheService = yield* ValidationCacheService
+      const cacheKey = `${name}:${keyExtractor(value)}`
+      
+      // Try to get from cache first
+      const cached = yield* cacheService.cache.get(cacheKey).pipe(
+        Effect.catchAll(() => Effect.succeed(null))
+      )
+      
+      if (cached !== null) {
+        yield* Effect.logDebug(`Cache hit for validation: ${name}`)
+        return cached
+      }
+      
+      // Cache miss - run validation
+      yield* Effect.logDebug(`Cache miss for validation: ${name}`)
+      const result = yield* validator(value)
+      
+      // Store result in cache
+      yield* cacheService.cache.set(cacheKey, result).pipe(
+        Effect.catchAll(() => Effect.unit) // Ignore cache set failures
+      )
+      
+      return result
+    }).pipe(
+      Effect.withSpan(`cached-validation-${name}`, {
+        attributes: {
+          'validation.name': name,
+          'validation.cache_key': keyExtractor(value)
+        }
+      })
+    )
 }
 
-// Usage with expensive operations
+// Batch validation with controlled concurrency
 interface ComplexData {
   id: string
   content: string
   metadata: Record<string, any>
+  userId: string
+  category: string
 }
 
-const isValidComplexData = createMemoizedPredicate<ComplexData>(
-  (data) => {
-    // Expensive validation logic
-    const contentValid = data.content.length > 0 && 
-                        data.content.split(' ').length >= 10
-    const metadataValid = Object.keys(data.metadata).length > 0
-    const idValid = /^[a-z0-9-]+$/.test(data.id)
-    
-    return contentValid && metadataValid && idValid
-  },
-  (data) => data.id // Use ID as cache key
-)
-
-// Batch validation with performance optimization
-const validateBatch = <T>(
-  items: T[],
-  predicate: Predicate.Predicate<T>
-): { valid: T[], invalid: T[] } => {
-  const valid: T[] = []
-  const invalid: T[] = []
-  
-  for (const item of items) {
-    if (predicate(item)) {
-      valid.push(item)
-    } else {
-      invalid.push(item)
-    }
+class DataValidationService extends Context.Tag("DataValidationService")<
+  DataValidationService,
+  {
+    validateContent: (content: string) => Effect.Effect<boolean, ValidationError>
+    validateMetadata: (metadata: Record<string, any>) => Effect.Effect<boolean, ValidationError>
+    validateUser: (userId: string) => Effect.Effect<boolean, ValidationError>
+    validateCategory: (category: string) => Effect.Effect<boolean, ValidationError>
   }
+>() {}
+
+// Create cached validators for expensive operations
+const createHighPerformanceValidators = () => {
+  const contentValidator = createCachedValidator(
+    'content',
+    (data: ComplexData) => Effect.gen(function* () {
+      const service = yield* DataValidationService
+      return yield* service.validateContent(data.content)
+    }),
+    (data) => `content_${data.content.slice(0, 50).replace(/[^a-zA-Z0-9]/g, '_')}`
+  )
   
-  return { valid, invalid }
+  const metadataValidator = createCachedValidator(
+    'metadata',
+    (data: ComplexData) => Effect.gen(function* () {
+      const service = yield* DataValidationService
+      return yield* service.validateMetadata(data.metadata)
+    }),
+    (data) => `metadata_${JSON.stringify(data.metadata).slice(0, 100)}`
+  )
+  
+  const userValidator = createCachedValidator(
+    'user',
+    (data: ComplexData) => Effect.gen(function* () {
+      const service = yield* DataValidationService
+      return yield* service.validateUser(data.userId)
+    }),
+    (data) => `user_${data.userId}`
+  )
+  
+  const categoryValidator = createCachedValidator(
+    'category',
+    (data: ComplexData) => Effect.gen(function* () {
+      const service = yield* DataValidationService
+      return yield* service.validateCategory(data.category)
+    }),
+    (data) => `category_${data.category}`
+  )
+  
+  return {
+    contentValidator,
+    metadataValidator,
+    userValidator,
+    categoryValidator
+  }
 }
+
+// High-performance batch validation with concurrency control
+const validateComplexDataBatch = (
+  items: ComplexData[],
+  concurrency: number = 10
+): Effect.Effect<BatchValidationResult<ComplexData>, ValidationError> =>
+  Effect.gen(function* () {
+    const startTime = Date.now()
+    const validators = createHighPerformanceValidators()
+    
+    yield* Effect.logInfo(`Starting batch validation of ${items.length} items with concurrency ${concurrency}`)
+    
+    // Process items in controlled batches
+    const results = yield* Effect.forEach(
+      items,
+      (item) => Effect.gen(function* () {
+        // Run validations in parallel for each item
+        const [contentValid, metadataValid, userValid, categoryValid] = yield* Effect.all([
+          validators.contentValidator(item),
+          validators.metadataValidator(item),
+          validators.userValidator(item),
+          validators.categoryValidator(item)
+        ])
+        
+        const isValid = contentValid && metadataValid && userValid && categoryValid
+        
+        return {
+          item,
+          isValid,
+          validationDetails: {
+            content: contentValid,
+            metadata: metadataValid,
+            user: userValid,
+            category: categoryValid
+          }
+        }
+      }),
+      { concurrency } // Control concurrency to avoid overwhelming services
+    )
+    
+    const endTime = Date.now()
+    const validItems = results.filter(r => r.isValid).map(r => r.item)
+    const invalidItems = results.filter(r => !r.isValid)
+    
+    yield* Effect.logInfo(
+      `Batch validation completed: ${validItems.length} valid, ${invalidItems.length} invalid in ${endTime - startTime}ms`
+    )
+    
+    return {
+      totalItems: items.length,
+      validItems,
+      invalidItems: invalidItems.map(r => ({ 
+        item: r.item, 
+        errors: Object.entries(r.validationDetails)
+          .filter(([_, valid]) => !valid)
+          .map(([field, _]) => `${field} validation failed`)
+      })),
+      processingTimeMs: endTime - startTime,
+      cacheHitRate: yield* calculateCacheHitRate(),
+      averageItemProcessingTime: (endTime - startTime) / items.length
+    }
+  }).pipe(
+    Effect.withSpan('validate-complex-data-batch', {
+      attributes: {
+        'batch.size': items.length.toString(),
+        'batch.concurrency': concurrency.toString()
+      }
+    })
+  )
+
+// Performance monitoring and optimization
+const calculateCacheHitRate = (): Effect.Effect<number, never> =>
+  Effect.gen(function* () {
+    // This would integrate with actual cache metrics
+    // For now, return a placeholder
+    return 0.85 // 85% cache hit rate
+  })
+
+// Smart batching strategy based on data characteristics
+const createAdaptiveBatchValidator = () => {
+  return (items: ComplexData[]): Effect.Effect<BatchValidationResult<ComplexData>, ValidationError> =>
+    Effect.gen(function* () {
+      // Analyze batch characteristics to optimize concurrency
+      const avgContentLength = items.reduce((sum, item) => sum + item.content.length, 0) / items.length
+      const uniqueUsers = new Set(items.map(item => item.userId)).size
+      const uniqueCategories = new Set(items.map(item => item.category)).size
+      
+      // Adjust concurrency based on characteristics
+      let concurrency = 10
+      
+      if (avgContentLength > 1000) {
+        concurrency = 5 // Reduce concurrency for large content
+      } else if (uniqueUsers < items.length * 0.1) {
+        concurrency = 20 // Increase concurrency when users are highly repeated (better cache hits)
+      }
+      
+      if (uniqueCategories < 5) {
+        concurrency = Math.min(concurrency + 5, 25) // Categories likely cached
+      }
+      
+      yield* Effect.logInfo(`Adaptive batching: using concurrency ${concurrency} for batch of ${items.length} items`)
+      
+      return yield* validateComplexDataBatch(items, concurrency)
+    })
+}
+
+// Usage in high-throughput scenarios
+const processHighVolumeData = (dataStream: ComplexData[]): Effect.Effect<ProcessingResult, ValidationError> =>
+  Effect.gen(function* () {
+    const adaptiveValidator = createAdaptiveBatchValidator()
+    
+    // Process in chunks to avoid memory issues
+    const chunkSize = 1000
+    const chunks = Arr.chunksOf(dataStream, chunkSize)
+    
+    let totalProcessed = 0
+    let totalValid = 0
+    let totalInvalid = 0
+    
+    for (const chunk of chunks) {
+      const result = yield* adaptiveValidator(chunk)
+      totalProcessed += result.totalItems
+      totalValid += result.validItems.length
+      totalInvalid += result.invalidItems.length
+      
+      // Optional: persist results incrementally
+      yield* Effect.logInfo(`Processed chunk: ${result.validItems.length}/${result.totalItems} valid`)
+    }
+    
+    return {
+      totalProcessed,
+      totalValid,
+      totalInvalid,
+      successRate: totalValid / totalProcessed
+    }
+  }).pipe(
+    Effect.provide(ValidationCacheService.live),
+    Effect.provide(DataValidationService.Default)
+  )
 ```
 
 ## Integration Examples
@@ -1273,13 +2408,23 @@ console.log(`Average: ${performanceResults.averageTime.toFixed(4)}ms per operati
 
 ## Conclusion
 
-Predicate provides type-safe boolean logic composition, reusable validation patterns, and seamless integration with the Effect ecosystem for building robust applications.
+Effect Predicate provides a powerful foundation for building type-safe, composable validation systems that integrate seamlessly with Effect's ecosystem of services, error handling, and async operations.
 
 Key benefits:
-- **Type Safety**: Full TypeScript support with refinements for type narrowing
-- **Composability**: Combine simple predicates into complex validation logic using logical operators
-- **Performance**: Optimized predicate evaluation with memoization and short-circuiting support
-- **Integration**: Works seamlessly with Array, Option, Either, and other Effect modules
-- **Testability**: Easy to unit test individual predicates and complex compositions
+- **Effect Integration**: Predicates work naturally with Effect.gen + yield* for complex business logic and .pipe for composition
+- **Service-Aware Validation**: Integrate with external services for comprehensive validation workflows
+- **Type Safety**: Full TypeScript support with refinements for type narrowing and error tracking
+- **Composable Architecture**: Build complex validation pipelines from simple, reusable predicate components
+- **Performance Optimization**: Built-in caching, batching, and concurrency control for high-throughput scenarios
+- **Comprehensive Error Handling**: Rich error types and recovery strategies for robust production systems
+- **Testing Support**: Property-based testing, mocking, and performance testing capabilities
 
-Use Effect Predicate when you need robust, type-safe boolean logic that can be composed, tested, and reused across your application. It's particularly valuable for validation, filtering, access control, and any scenario where you need to make boolean decisions about your data.
+Use Effect Predicate when building applications that require:
+- **Multi-step validation workflows** with service dependencies
+- **Access control systems** with dynamic permission checking
+- **Data processing pipelines** with filtering and transformation
+- **Form validation** with real-time feedback and service integration
+- **Business rule engines** with complex conditional logic
+- **High-performance data validation** with caching and optimization
+
+The hybrid pattern of Effect.gen + yield* for business logic and .pipe for post-processing makes Effect Predicate ideal for real-world applications where validation is just one part of larger, more complex workflows. By leveraging Effect's service system, you can build validation logic that is both testable and maintainable while providing the performance and reliability needed for production systems.

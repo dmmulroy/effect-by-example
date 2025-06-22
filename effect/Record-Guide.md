@@ -57,23 +57,16 @@ This approach leads to:
 Effect's Record module provides a comprehensive set of type-safe, functional utilities for working with records (objects with string keys). It enables clean, composable transformations while preserving full type information.
 
 ```typescript
-import { Record, pipe } from "effect"
+import { Record } from "effect"
 
 // Clean, type-safe operations
-const activeUsers = pipe(
-  users,
-  Record.filter((user) => user.isActive)
-)
+const activeUsers = Record.filter(users, (user) => user.isActive)
 
-const userNames = pipe(
-  users,
-  Record.map((user) => user.name.toUpperCase())
-)
+const userNames = Record.map(users, (user) => user.name.toUpperCase())
 
 // Chainable, composable, type-safe
 const processedData = pipe(
-  users,
-  Record.filter((user) => user.age >= 30),
+  Record.filter(users, (user) => user.age >= 30),
   Record.map((user) => ({ ...user, displayName: user.name.toUpperCase() })),
   Record.collect((key, user) => ({ id: key, ...user }))
 )
@@ -123,22 +116,13 @@ const products = {
 }
 
 // Map values while preserving keys
-const discountedPrices = pipe(
-  products,
-  Record.map((product) => product.price * 0.9)
-)
+const discountedPrices = Record.map(products, (product) => product.price * 0.9)
 
 // Filter records based on conditions
-const electronics = pipe(
-  products,
-  Record.filter((product) => product.category === "electronics")
-)
+const electronics = Record.filter(products, (product) => product.category === "electronics")
 
 // Transform to arrays for processing
-const productList = pipe(
-  products,
-  Record.collect((id, product) => ({ id, ...product }))
-)
+const productList = Record.collect(products, (id, product) => ({ id, ...product }))
 ```
 
 ### Pattern 3: Common Operations
@@ -160,10 +144,7 @@ const hasLowStock = Record.some(inventory, (item) => item.quantity < item.minSto
 const firstLowStock = Record.findFirst(inventory, (item) => item.quantity < item.minStock)
 
 // Reduce to summary data
-const totalQuantity = pipe(
-  inventory,
-  Record.reduce(0, (total, item) => total + item.quantity)
-)
+const totalQuantity = Record.reduce(inventory, 0, (total, item) => total + item.quantity)
 ```
 
 ## Real-World Examples
@@ -173,7 +154,7 @@ const totalQuantity = pipe(
 Managing user preferences and settings across different modules in an application.
 
 ```typescript
-import { Record, pipe, Effect, Option } from "effect"
+import { Record, pipe, Effect, Option, Either } from "effect"
 
 interface UserPreferences {
   theme: "light" | "dark"
@@ -195,12 +176,10 @@ export const ConfigurationService = {
     const appSettings = yield* getAppSettings()
     
     // Merge user preferences with app defaults
-    const mergedConfig = pipe(
+    const mergedConfig = Record.union(
       preferences,
-      Record.union(
-        appSettings,
-        (userValue, appValue) => userValue // User preferences take precedence
-      )
+      appSettings,
+      (userValue, appValue) => userValue // User preferences take precedence
     )
     
     return mergedConfig
@@ -211,34 +190,26 @@ export const ConfigurationService = {
       const currentSettings = yield* fetchUserPreferences(userId)
       
       // Selectively update only provided settings
-      const updatedSettings = pipe(
-        updates,
-        Record.filterMap((value, key) => 
-          value !== undefined ? Option.some(value) : Option.none()
-        ),
-        (validUpdates) => Record.union(currentSettings, validUpdates, (_, newValue) => newValue)
+      const validUpdates = Record.filterMap(updates, (value, key) => 
+        value !== undefined ? Option.some(value) : Option.none()
       )
+      
+      const updatedSettings = Record.union(currentSettings, validUpdates, (_, newValue) => newValue)
       
       return yield* saveUserPreferences(userId, updatedSettings)
     }),
 
   validateSettings: (settings: Record<string, unknown>) => Effect.gen(function* () {
     // Extract and validate different setting categories
-    const [validSettings, invalidSettings] = pipe(
-      settings,
-      Record.partitionMap((value, key) => {
-        const validation = validateSettingValue(key, value)
-        return validation.isValid 
-          ? Either.right({ key, value: validation.value })
-          : Either.left({ key, error: validation.error })
-      })
-    )
+    const [validSettings, invalidSettings] = Record.partitionMap(settings, (value, key) => {
+      const validation = validateSettingValue(key, value)
+      return validation.isValid 
+        ? Either.right({ key, value: validation.value })
+        : Either.left({ key, error: validation.error })
+    })
     
     if (Record.size(invalidSettings) > 0) {
-      const errors = pipe(
-        invalidSettings,
-        Record.collect((key, error) => `${key}: ${error}`)
-      )
+      const errors = Record.collect(invalidSettings, (key, error) => `${key}: ${error}`)
       return yield* Effect.fail(new ConfigurationError(`Invalid settings: ${errors.join(", ")}`))
     }
     
@@ -297,32 +268,27 @@ interface NormalizedUser {
 export const ApiTransformationService = {
   // Transform multiple API responses into normalized format
   normalizeUsers: (responses: Record<string, RawApiUser[]>) => Effect.gen(function* () {
-    const normalizedBySource = pipe(
-      responses,
-      Record.map((users) => 
-        users.map(transformUser).filter(user => user !== null)
-      )
+    const normalizedBySource = Record.map(responses, (users) => 
+      users.map(transformUser).filter(user => user !== null)
     )
 
     // Merge users from different sources, handling conflicts
-    const allUsers = pipe(
+    const allUsers = Record.reduce(
       normalizedBySource,
-      Record.reduce(
-        {} as Record<string, NormalizedUser>,
-        (merged, users, source) => {
-          const usersByEmail = users.reduce((acc, user) => {
-            acc[user.email] = { ...user, source }
-            return acc
-          }, {} as Record<string, NormalizedUser & { source: string }>)
-          
-          return Record.union(merged, usersByEmail, (existing, incoming) => ({
-            ...existing,
-            // Keep most recent user based on creation date
-            ...(incoming.createdAt > existing.createdAt ? incoming : existing),
-            sources: [...(existing.sources || [existing.source]), incoming.source]
-          }))
-        }
-      )
+      {} as Record<string, NormalizedUser>,
+      (merged, users, source) => {
+        const usersByEmail = users.reduce((acc, user) => {
+          acc[user.email] = { ...user, source }
+          return acc
+        }, {} as Record<string, NormalizedUser & { source: string }>)
+        
+        return Record.union(merged, usersByEmail, (existing, incoming) => ({
+          ...existing,
+          // Keep most recent user based on creation date
+          ...(incoming.createdAt > existing.createdAt ? incoming : existing),
+          sources: [...(existing.sources || [existing.source]), incoming.source]
+        }))
+      }
     )
 
     return allUsers
@@ -331,76 +297,66 @@ export const ApiTransformationService = {
   // Group users by domain and generate analytics
   generateUserAnalytics: (users: Record<string, NormalizedUser>) => Effect.gen(function* () {
     // Group users by email domain
-    const usersByDomain = pipe(
-      users,
-      Record.collect((id, user) => ({
-        domain: user.email.split('@')[1],
-        user
-      })),
-      (entries) => entries.reduce((acc, { domain, user }) => {
-        if (!acc[domain]) acc[domain] = []
-        acc[domain].push(user)
-        return acc
-      }, {} as Record<string, NormalizedUser[]>)
-    )
+    const entries = Record.collect(users, (id, user) => ({
+      domain: user.email.split('@')[1],
+      user
+    }))
+    
+    const usersByDomain = entries.reduce((acc, { domain, user }) => {
+      if (!acc[domain]) acc[domain] = []
+      acc[domain].push(user)
+      return acc
+    }, {} as Record<string, NormalizedUser[]>)
 
     // Generate domain statistics
-    const domainStats = pipe(
-      usersByDomain,
-      Record.map((domainUsers) => ({
-        totalUsers: domainUsers.length,
-        verifiedUsers: domainUsers.filter(u => u.verified).length,
-        averageAccountAge: domainUsers.reduce((sum, u) => 
-          sum + (Date.now() - u.createdAt.getTime()), 0) / domainUsers.length,
-        profileCompleteness: domainUsers.map(u => 
-          Record.size(u.profile) / 5 * 100 // Assuming 5 profile fields max
-        ).reduce((sum, score) => sum + score, 0) / domainUsers.length
-      }))
+    const domainStats = Record.map(usersByDomain, (domainUsers) => ({
+      totalUsers: domainUsers.length,
+      verifiedUsers: domainUsers.filter(u => u.verified).length,
+      averageAccountAge: domainUsers.reduce((sum, u) => 
+        sum + (Date.now() - u.createdAt.getTime()), 0) / domainUsers.length,
+      profileCompleteness: domainUsers.map(u => 
+        Record.size(u.profile) / 5 * 100 // Assuming 5 profile fields max
+      ).reduce((sum, score) => sum + score, 0) / domainUsers.length
+    }))
+
+    const topDomains = pipe(
+      Record.collect(domainStats, (domain, stats) => ({ domain, ...stats })),
+      (domains) => domains.sort((a, b) => b.totalUsers - a.totalUsers).slice(0, 10)
     )
 
     return {
       usersByDomain,
       domainStats,
       totalUsers: Record.size(users),
-      topDomains: pipe(
-        domainStats,
-        Record.collect((domain, stats) => ({ domain, ...stats })),
-        (domains) => domains.sort((a, b) => b.totalUsers - a.totalUsers).slice(0, 10)
-      )
+      topDomains
     }
   }),
 
   // Clean and validate user profile data
   sanitizeProfiles: (users: Record<string, NormalizedUser>) => Effect.gen(function* () {
-    const sanitizedUsers = pipe(
-      users,
-      Record.filterMap((user, id) => {
-        // Clean profile data
-        const cleanProfile = pipe(
-          user.profile,
-          Record.filterMap((value, key) => {
-            // Remove empty or invalid profile entries
-            if (typeof value !== 'string' || value.trim() === '') {
-              return Option.none()
-            }
-            
-            // Sanitize profile values
-            const sanitized = sanitizeProfileValue(key, value)
-            return sanitized ? Option.some(sanitized) : Option.none()
-          })
-        )
-
-        // Only include users with valid email and some profile data
-        if (!isValidEmail(user.email) || Record.size(cleanProfile) === 0) {
+    const sanitizedUsers = Record.filterMap(users, (user, id) => {
+      // Clean profile data
+      const cleanProfile = Record.filterMap(user.profile, (value, key) => {
+        // Remove empty or invalid profile entries
+        if (typeof value !== 'string' || value.trim() === '') {
           return Option.none()
         }
-
-        return Option.some({
-          ...user,
-          profile: cleanProfile
-        })
+        
+        // Sanitize profile values
+        const sanitized = sanitizeProfileValue(key, value)
+        return sanitized ? Option.some(sanitized) : Option.none()
       })
-    )
+
+      // Only include users with valid email and some profile data
+      if (!isValidEmail(user.email) || Record.size(cleanProfile) === 0) {
+        return Option.none()
+      }
+
+      return Option.some({
+        ...user,
+        profile: cleanProfile
+      })
+    })
 
     return sanitizedUsers
   })
@@ -409,18 +365,17 @@ export const ApiTransformationService = {
 // Helper functions
 const transformUser = (raw: RawApiUser): NormalizedUser | null => {
   try {
+    const metadataProfile = Record.filterMap(raw.metadata || {}, (value, key) => 
+      typeof value === 'string' ? Option.some(value) : Option.none()
+    )
+
     return {
       id: raw.user_id,
       name: raw.full_name,
       email: raw.email_address,
       verified: raw.is_verified,
       createdAt: new Date(raw.created_at),
-      profile: pipe(
-        raw.metadata || {},
-        Record.filterMap((value, key) => 
-          typeof value === 'string' ? Option.some(value) : Option.none()
-        )
-      )
+      profile: metadataProfile
     }
   } catch {
     return null
@@ -465,22 +420,19 @@ export const FeatureFlagService = {
     flags: Record<string, FeatureFlag>, 
     userContext: UserContext
   ) => Effect.gen(function* () {
-    const evaluatedFlags = pipe(
-      flags,
-      Record.filterMap((flag, flagName) => {
-        // Skip expired flags
-        if (flag.expiresAt && flag.expiresAt < new Date()) {
-          return Option.none()
-        }
+    const evaluatedFlags = Record.filterMap(flags, (flag, flagName) => {
+      // Skip expired flags
+      if (flag.expiresAt && flag.expiresAt < new Date()) {
+        return Option.none()
+      }
 
-        const isEnabled = evaluateFlag(flag, userContext)
-        return Option.some({
-          name: flagName,
-          enabled: isEnabled,
-          reason: getEvaluationReason(flag, userContext, isEnabled)
-        })
+      const isEnabled = evaluateFlag(flag, userContext)
+      return Option.some({
+        name: flagName,
+        enabled: isEnabled,
+        reason: getEvaluationReason(flag, userContext, isEnabled)
       })
-    )
+    })
 
     // Log flag evaluations for analytics
     yield* logFlagEvaluations(userContext.userId, evaluatedFlags)
@@ -494,28 +446,21 @@ export const FeatureFlagService = {
     updates: Record<string, Partial<FeatureFlag>>
   ) => Effect.gen(function* () {
     // Validate all updates before applying
-    const validationResults = pipe(
-      updates,
-      Record.map((update, flagName) => validateFlagUpdate(flagName, update))
+    const validationResults = Record.map(updates, (update, flagName) => 
+      validateFlagUpdate(flagName, update)
     )
 
     // Separate valid and invalid updates
-    const [validUpdates, invalidUpdates] = pipe(
-      validationResults,
-      Record.partitionMap((result, flagName) =>
-        result.isValid 
-          ? Either.right({ flagName, update: result.validatedUpdate })
-          : Either.left({ flagName, errors: result.errors })
-      )
+    const [validUpdates, invalidUpdates] = Record.partitionMap(validationResults, (result, flagName) =>
+      result.isValid 
+        ? Either.right({ flagName, update: result.validatedUpdate })
+        : Either.left({ flagName, errors: result.errors })
     )
 
     // Return early if there are validation errors
     if (Record.size(invalidUpdates) > 0) {
-      const errorMessages = pipe(
-        invalidUpdates,
-        Record.collect((flagName, { errors }) => 
-          `${flagName}: ${errors.join(", ")}`
-        )
+      const errorMessages = Record.collect(invalidUpdates, (flagName, { errors }) => 
+        `${flagName}: ${errors.join(", ")}`
       )
       return yield* Effect.fail(
         new ValidationError(`Flag validation failed: ${errorMessages.join(", ")}`)
@@ -523,18 +468,16 @@ export const FeatureFlagService = {
     }
 
     // Apply valid updates
-    const updatedFlags = pipe(
+    const updatedFlags = Record.reduce(
       validUpdates,
-      Record.reduce(
-        currentFlags,
-        (flags, { flagName, update }) => 
-          Record.modify(flags, flagName, (existingFlag) => ({
-            ...existingFlag,
-            ...update,
-            // Ensure metadata is properly merged
-            metadata: { ...existingFlag.metadata, ...update.metadata }
-          }))
-      )
+      currentFlags,
+      (flags, { flagName, update }) => 
+        Record.modify(flags, flagName, (existingFlag) => ({
+          ...existingFlag,
+          ...update,
+          // Ensure metadata is properly merged
+          metadata: { ...existingFlag.metadata, ...update.metadata }
+        }))
     )
 
     // Audit the changes
@@ -548,54 +491,48 @@ export const FeatureFlagService = {
     flags: Record<string, FeatureFlag>,
     evaluationLogs: Record<string, Array<{ userId: string; enabled: boolean; timestamp: Date }>>
   ) => Effect.gen(function* () {
-    const analytics = pipe(
-      flags,
-      Record.map((flag, flagName) => {
-        const logs = evaluationLogs[flagName] || []
-        const recentLogs = logs.filter(log => 
-          log.timestamp > new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-        )
+    const analytics = Record.map(flags, (flag, flagName) => {
+      const logs = evaluationLogs[flagName] || []
+      const recentLogs = logs.filter(log => 
+        log.timestamp > new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
+      )
 
-        return {
-          flagName,
-          configuration: {
-            enabled: flag.enabled,
-            rolloutPercentage: flag.rolloutPercentage,
-            targetSegments: flag.userSegments.length
-          },
-          usage: {
-            totalEvaluations: recentLogs.length,
-            enabledEvaluations: recentLogs.filter(log => log.enabled).length,
-            uniqueUsers: new Set(recentLogs.map(log => log.userId)).size,
-            enablementRate: recentLogs.length > 0 
-              ? recentLogs.filter(log => log.enabled).length / recentLogs.length 
-              : 0
-          }
+      return {
+        flagName,
+        configuration: {
+          enabled: flag.enabled,
+          rolloutPercentage: flag.rolloutPercentage,
+          targetSegments: flag.userSegments.length
+        },
+        usage: {
+          totalEvaluations: recentLogs.length,
+          enabledEvaluations: recentLogs.filter(log => log.enabled).length,
+          uniqueUsers: new Set(recentLogs.map(log => log.userId)).size,
+          enablementRate: recentLogs.length > 0 
+            ? recentLogs.filter(log => log.enabled).length / recentLogs.length 
+            : 0
         }
-      })
-    )
+      }
+    })
 
     // Identify underutilized or problematic flags
-    const insights = pipe(
-      analytics,
-      Record.filterMap((data, flagName) => {
-        const insights: string[] = []
-        
-        if (data.usage.totalEvaluations === 0) {
-          insights.push("No recent usage")
-        }
-        
-        if (data.configuration.enabled && data.usage.enablementRate < 0.1) {
-          insights.push("Low enablement rate despite being enabled")
-        }
-        
-        if (data.usage.uniqueUsers < 10 && data.configuration.rolloutPercentage > 50) {
-          insights.push("High rollout percentage but low user reach")
-        }
+    const insights = Record.filterMap(analytics, (data, flagName) => {
+      const insights: string[] = []
+      
+      if (data.usage.totalEvaluations === 0) {
+        insights.push("No recent usage")
+      }
+      
+      if (data.configuration.enabled && data.usage.enablementRate < 0.1) {
+        insights.push("Low enablement rate despite being enabled")
+      }
+      
+      if (data.usage.uniqueUsers < 10 && data.configuration.rolloutPercentage > 50) {
+        insights.push("High rollout percentage but low user reach")
+      }
 
-        return insights.length > 0 ? Option.some(insights) : Option.none()
-      })
-    )
+      return insights.length > 0 ? Option.some(insights) : Option.none()
+    })
 
     return { analytics, insights }
   })
@@ -702,24 +639,23 @@ const rolePermissions = {
 }
 
 // Union - combine permissions, with custom conflict resolution
-const mergedPermissions = pipe(
+const mergedPermissions = Record.union(
   userPermissions,
-  Record.union(rolePermissions, (userPerm, rolePerm) => userPerm || rolePerm)
+  rolePermissions,
+  (userPerm, rolePerm) => userPerm || rolePerm
 )
 // Result: { read: true, write: true, delete: true, admin: true }
 
 // Intersection - only common keys
-const commonPermissions = pipe(
+const commonPermissions = Record.intersection(
   userPermissions,
-  Record.intersection(rolePermissions, (userPerm, rolePerm) => userPerm && rolePerm)
+  rolePermissions,
+  (userPerm, rolePerm) => userPerm && rolePerm
 )
 // Result: { write: false, delete: false }
 
 // Difference - keys in first record but not in second
-const uniqueUserPermissions = pipe(
-  userPermissions,
-  Record.difference(rolePermissions)
-)
+const uniqueUserPermissions = Record.difference(userPermissions, rolePermissions)
 // Result: { read: true }
 ```
 
@@ -741,36 +677,27 @@ export const AccessControlService = {
     roleAccess: Record<string, ResourceAccess>
   ) => Effect.gen(function* () {
     // Step 1: Merge user and group access (user takes precedence)
-    const userGroupAccess = pipe(
-      userAccess,
-      Record.union(groupAccess, (userAccess, groupAccess) => {
-        // User access overrides group access
-        if (userAccess.level === "admin") return userAccess
-        
-        // Use higher permission level
-        const levels = { read: 1, write: 2, admin: 3 }
-        return levels[userAccess.level] >= levels[groupAccess.level] 
-          ? userAccess 
-          : groupAccess
-      })
-    )
+    const userGroupAccess = Record.union(userAccess, groupAccess, (userAccess, groupAccess) => {
+      // User access overrides group access
+      if (userAccess.level === "admin") return userAccess
+      
+      // Use higher permission level
+      const levels = { read: 1, write: 2, admin: 3 }
+      return levels[userAccess.level] >= levels[groupAccess.level] 
+        ? userAccess 
+        : groupAccess
+    })
 
     // Step 2: Apply role-based access (additive permissions)
-    const finalAccess = pipe(
-      userGroupAccess,
-      Record.union(roleAccess, (existing, roleAccess) => ({
-        level: maxPermissionLevel(existing.level, roleAccess.level),
-        granted: existing.granted || roleAccess.granted,
-        expires: minDate(existing.expires, roleAccess.expires)
-      }))
-    )
+    const finalAccess = Record.union(userGroupAccess, roleAccess, (existing, roleAccess) => ({
+      level: maxPermissionLevel(existing.level, roleAccess.level),
+      granted: existing.granted || roleAccess.granted,
+      expires: minDate(existing.expires, roleAccess.expires)
+    }))
 
     // Step 3: Filter out expired permissions
-    const activeAccess = pipe(
-      finalAccess,
-      Record.filter((access) => 
-        !access.expires || access.expires > new Date()
-      )
+    const activeAccess = Record.filter(finalAccess, (access) => 
+      !access.expires || access.expires > new Date()
     )
 
     return activeAccess
@@ -781,28 +708,21 @@ export const AccessControlService = {
     policies: Record<string, Record<string, ResourceAccess>>
   ) => Effect.gen(function* () {
     // Get all unique resource names across all policies
-    const allResources = pipe(
-      policies,
-      Record.reduce(new Set<string>(), (resources, policy) => {
-        Record.keys(policy).forEach(resource => resources.add(resource))
-        return resources
-      })
-    )
+    const allResources = Record.reduce(policies, new Set<string>(), (resources, policy) => {
+      Record.keys(policy).forEach(resource => resources.add(resource))
+      return resources
+    })
 
     const conflicts = Array.from(allResources).reduce((acc, resource) => {
-      const resourcePolicies = pipe(
-        policies,
-        Record.filterMap((policy, policyName) => 
-          Record.has(policy, resource) 
-            ? Option.some({ policyName, access: Record.get(policy, resource) })
-            : Option.none()
-        )
+      const resourcePolicies = Record.filterMap(policies, (policy, policyName) => 
+        Record.has(policy, resource) 
+          ? Option.some({ policyName, access: Record.get(policy, resource) })
+          : Option.none()
       )
 
       // Check for conflicts in permission levels
       const accessLevels = pipe(
-        resourcePolicies,
-        Record.values,
+        Record.values(resourcePolicies),
         (accesses) => new Set(accesses.map(a => a.level))
       )
 
@@ -847,33 +767,27 @@ const rawData = {
 }
 
 // FilterMap - transform and filter in one operation
-const parsedValidItems = pipe(
-  rawData,
-  Record.filterMap((value, key) => {
-    if (!value.startsWith("valid:")) return Option.none()
-    
-    const numericValue = parseInt(value.split(":")[1])
-    return isNaN(numericValue) 
-      ? Option.none() 
-      : Option.some({ key, value: numericValue })
-  })
-)
+const parsedValidItems = Record.filterMap(rawData, (value, key) => {
+  if (!value.startsWith("valid:")) return Option.none()
+  
+  const numericValue = parseInt(value.split(":")[1])
+  return isNaN(numericValue) 
+    ? Option.none() 
+    : Option.some({ key, value: numericValue })
+})
 // Result: { item1: { key: "item1", value: 100 }, item3: { key: "item3", value: 250 }, item5: { key: "item5", value: 75 } }
 
 // PartitionMap - split into two records based on Either
-const categorizedData = pipe(
-  rawData,
-  Record.partitionMap((value, key) => {
-    if (!value.startsWith("valid:")) {
-      return Either.left({ key, error: "Invalid format" })
-    }
-    
-    const numericValue = parseInt(value.split(":")[1])
-    return isNaN(numericValue)
-      ? Either.left({ key, error: "Invalid number" })
-      : Either.right({ key, value: numericValue })
-  })
-)
+const categorizedData = Record.partitionMap(rawData, (value, key) => {
+  if (!value.startsWith("valid:")) {
+    return Either.left({ key, error: "Invalid format" })
+  }
+  
+  const numericValue = parseInt(value.split(":")[1])
+  return isNaN(numericValue)
+    ? Either.left({ key, error: "Invalid number" })
+    : Either.right({ key, value: numericValue })
+})
 // Result: [
 //   { item2: { key: "item2", error: "Invalid format" }, item4: { key: "item4", error: "Invalid format" } }, // errors
 //   { item1: { key: "item1", value: 100 }, item3: { key: "item3", value: 250 }, item5: { key: "item5", value: 75 } } // success
@@ -902,36 +816,30 @@ interface ValidatedEvent {
 export const EventProcessingService = {
   processEventBatch: (events: Record<string, RawEvent>) => Effect.gen(function* () {
     // FilterMap to validate and transform events
-    const processedEvents = pipe(
-      events,
-      Record.filterMap((event, eventId) => validateAndTransformEvent(event, eventId))
+    const processedEvents = Record.filterMap(events, (event, eventId) => 
+      validateAndTransformEvent(event, eventId)
     )
 
     // Separate processing for different event types
-    const eventsByType = pipe(
+    const eventsByType = Record.reduce(
       processedEvents,
-      Record.reduce(
-        {} as Record<string, ValidatedEvent[]>,
-        (acc, event) => {
-          if (!acc[event.eventType]) acc[event.eventType] = []
-          acc[event.eventType].push(event)
-          return acc
-        }
-      )
+      {} as Record<string, ValidatedEvent[]>,
+      (acc, event) => {
+        if (!acc[event.eventType]) acc[event.eventType] = []
+        acc[event.eventType].push(event)
+        return acc
+      }
     )
 
     // Generate processing summary
-    const summary = pipe(
-      eventsByType,
-      Record.map((events) => ({
-        count: events.length,
-        timeRange: {
-          earliest: Math.min(...events.map(e => e.timestamp.getTime())),
-          latest: Math.max(...events.map(e => e.timestamp.getTime()))
-        },
-        uniqueUsers: new Set(events.map(e => e.userId)).size
-      }))
-    )
+    const summary = Record.map(eventsByType, (events) => ({
+      count: events.length,
+      timeRange: {
+        earliest: Math.min(...events.map(e => e.timestamp.getTime())),
+        latest: Math.max(...events.map(e => e.timestamp.getTime()))
+      },
+      uniqueUsers: new Set(events.map(e => e.userId)).size
+    }))
 
     return {
       processedEvents: eventsByType,
@@ -949,41 +857,32 @@ export const EventProcessingService = {
     dataset: Record<string, Record<string, unknown>>
   ) => Effect.gen(function* () {
     // Stage 1: Basic validation and type coercion
-    const stage1Results = pipe(
-      dataset,
-      Record.partitionMap((record, recordId) => {
-        const validationResult = performBasicValidation(record)
-        return validationResult.isValid
-          ? Either.right({ recordId, data: validationResult.data })
-          : Either.left({ recordId, errors: validationResult.errors })
-      })
-    )
+    const stage1Results = Record.partitionMap(dataset, (record, recordId) => {
+      const validationResult = performBasicValidation(record)
+      return validationResult.isValid
+        ? Either.right({ recordId, data: validationResult.data })
+        : Either.left({ recordId, errors: validationResult.errors })
+    })
 
     const [stage1Errors, stage1Valid] = stage1Results
 
     // Stage 2: Business rule validation on valid records
-    const stage2Results = pipe(
-      stage1Valid,
-      Record.partitionMap(({ recordId, data }) => {
-        const businessValidation = performBusinessValidation(data)
-        return businessValidation.isValid
-          ? Either.right({ recordId, data: businessValidation.cleanedData })
-          : Either.left({ recordId, errors: businessValidation.errors })
-      })
-    )
+    const stage2Results = Record.partitionMap(stage1Valid, ({ recordId, data }) => {
+      const businessValidation = performBusinessValidation(data)
+      return businessValidation.isValid
+        ? Either.right({ recordId, data: businessValidation.cleanedData })
+        : Either.left({ recordId, errors: businessValidation.errors })
+    })
 
     const [stage2Errors, finalValid] = stage2Results
 
     // Stage 3: Enrich valid data
-    const enrichedData = pipe(
-      finalValid,
-      Record.filterMap(({ recordId, data }) => {
-        const enrichmentResult = enrichData(data)
-        return enrichmentResult.success 
-          ? Option.some(enrichmentResult.enrichedData)
-          : Option.none()
-      })
-    )
+    const enrichedData = Record.filterMap(finalValid, ({ recordId, data }) => {
+      const enrichmentResult = enrichData(data)
+      return enrichmentResult.success 
+        ? Option.some(enrichmentResult.enrichedData)
+        : Option.none()
+    })
 
     return {
       validData: enrichedData,
@@ -1056,7 +955,7 @@ Advanced patterns for aggregating, grouping, and collecting data from records.
 #### Collect Pattern for Data Transformation
 
 ```typescript
-import { Record, pipe, Array } from "effect"
+import { Record, pipe, Array as Arr } from "effect"
 
 const salesData = {
   "Q1-2024": { revenue: 100000, customers: 250, region: "north" },
@@ -1067,20 +966,18 @@ const salesData = {
 
 // Collect to create structured data for analysis
 const quarterlyReport = pipe(
-  salesData,
-  Record.collect((quarter, data) => ({
+  Record.collect(salesData, (quarter, data) => ({
     quarter,
     ...data,
     revenuePerCustomer: data.revenue / data.customers,
     quarterNumber: parseInt(quarter.split("-")[0].substring(1))
   })),
-  Array.sort((a, b) => a.quarterNumber - b.quarterNumber)
+  Arr.sort((a, b) => a.quarterNumber - b.quarterNumber)
 )
 
 // Group and aggregate by region
 const regionalAnalysis = pipe(
-  salesData,
-  Record.collect((quarter, data) => ({ quarter, ...data })),
+  Record.collect(salesData, (quarter, data) => ({ quarter, ...data })),
   (quarters) => quarters.reduce((acc, quarter) => {
     if (!acc[quarter.region]) {
       acc[quarter.region] = {
@@ -1133,11 +1030,8 @@ export const SafeRecordUtils = {
     source: Record<string, unknown>,
     validator: (value: unknown) => value is T
   ) => Effect.gen(function* () {
-    const validatedSource = pipe(
-      source,
-      Record.filterMap((value, key) => 
-        validator(value) ? Option.some(value) : Option.none()
-      )
+    const validatedSource = Record.filterMap(source, (value, key) => 
+      validator(value) ? Option.some(value) : Option.none()
     )
 
     return Record.union(target, validatedSource, (existing, incoming) => incoming)
@@ -1148,13 +1042,10 @@ export const SafeRecordUtils = {
     record: Record<string, A>,
     converter: (value: A) => Option.Option<B>,
     defaultValue: B
-  ): Record<string, B> => pipe(
-    record,
-    Record.map((value) => pipe(
-      converter(value),
-      Option.getOrElse(() => defaultValue)
-    ))
-  )
+  ): Record<string, B> => Record.map(record, (value) => pipe(
+    converter(value),
+    Option.getOrElse(() => defaultValue)
+  ))
 }
 
 // Usage example
@@ -1205,28 +1096,23 @@ export const StateManager = {
       
       // Update specific nested properties
       updatePath: <K extends keyof T>(path: K[], updater: (current: T[K]) => T[K]) =>
-        pipe(
-          Ref.get(stateRef),
-          Effect.flatMap((state) => {
-            const updated = updateNestedProperty(state as any, path, updater)
-            return Ref.set(stateRef, updated)
-          })
-        ),
+        Effect.gen(function* () {
+          const state = yield* Ref.get(stateRef)
+          const updated = updateNestedProperty(state as any, path, updater)
+          yield* Ref.set(stateRef, updated)
+        }),
       
       // Merge records at specific paths
       mergeAtPath: <K extends keyof T>(path: K[], updates: Partial<T[K]>) =>
-        pipe(
-          Ref.get(stateRef),
-          Effect.flatMap((state) => {
-            const currentValue = getNestedProperty(state as any, path)
-            if (typeof currentValue === 'object' && currentValue !== null) {
-              const merged = { ...currentValue, ...updates }
-              const updated = setNestedProperty(state as any, path, merged)
-              return Ref.set(stateRef, updated)
-            }
-            return Effect.void
-          })
-        ),
+        Effect.gen(function* () {
+          const state = yield* Ref.get(stateRef)
+          const currentValue = getNestedProperty(state as any, path)
+          if (typeof currentValue === 'object' && currentValue !== null) {
+            const merged = { ...currentValue, ...updates }
+            const updated = setNestedProperty(state as any, path, merged)
+            yield* Ref.set(stateRef, updated)
+          }
+        }),
       
       // Batch multiple updates
       batchUpdate: (updates: Array<() => Effect.Effect<void, never, never>>) =>
@@ -1238,14 +1124,13 @@ export const StateManager = {
   createSelectors: <T>(stateEffect: Effect.Effect<T, never, never>) => ({
     // Select and transform part of state
     select: <R>(selector: (state: T) => R) =>
-      pipe(stateEffect, Effect.map(selector)),
+      stateEffect.pipe(Effect.map(selector)),
     
     // Select record entries matching criteria
     selectWhere: <K extends keyof T>(
       key: K,
       predicate: (value: T[K][keyof T[K]], key: keyof T[K]) => boolean
-    ) => pipe(
-      stateEffect,
+    ) => stateEffect.pipe(
       Effect.map((state) => {
         const record = state[key]
         if (typeof record === 'object' && record !== null) {
@@ -1259,8 +1144,7 @@ export const StateManager = {
     aggregate: <K extends keyof T, R>(
       key: K,
       aggregator: (record: T[K]) => R
-    ) => pipe(
-      stateEffect,
+    ) => stateEffect.pipe(
       Effect.map((state) => aggregator(state[key]))
     )
   })
@@ -1356,14 +1240,15 @@ export const RecordCache = {
             }
             
             // Update hit count
-            yield* Ref.update(cacheRef, (cache) =>
-              Record.modify(cache, key, (entry) => ({
-                ...entry,
-                hits: entry.hits + 1
-              }))
-            )
-            
-            return Option.some(entry.value)
+            return Effect.gen(function* () {
+              yield* Ref.update(cacheRef, (cache) =>
+                Record.modify(cache, key, (entry) => ({
+                  ...entry,
+                  hits: entry.hits + 1
+                }))
+              )
+              return Option.some(entry.value)
+            }).pipe(Effect.flatten)
           })
         )
       }),
@@ -1388,7 +1273,7 @@ export const RecordCache = {
       ) => Effect.gen(function* () {
         const cached = yield* this.get(key)
         
-        return pipe(
+        return yield* pipe(
           cached,
           Option.match({
             onNone: () => Effect.gen(function* () {
@@ -1397,8 +1282,7 @@ export const RecordCache = {
               return computed
             }),
             onSome: (value) => Effect.succeed(value)
-          }),
-          Effect.flatten
+          })
         )
       }),
       
@@ -1406,13 +1290,10 @@ export const RecordCache = {
       cleanup: () => Effect.gen(function* () {
         const now = Date.now()
         yield* Ref.update(cacheRef, (cache) =>
-          pipe(
-            cache,
-            Record.filter((entry) => {
-              const isExpired = entry.ttl && (now - entry.timestamp) > entry.ttl
-              return !isExpired
-            })
-          )
+          Record.filter(cache, (entry) => {
+            const isExpired = entry.ttl && (now - entry.timestamp) > entry.ttl
+            return !isExpired
+          })
         )
       }),
       
@@ -1420,22 +1301,20 @@ export const RecordCache = {
       getStats: () => Effect.gen(function* () {
         const cache = yield* Ref.get(cacheRef)
         
-        return pipe(
-          cache,
-          Record.collect((key, entry) => ({
-            key,
-            age: Date.now() - entry.timestamp,
-            hits: entry.hits,
-            size: JSON.stringify(entry.value).length // Rough estimate
-          })),
-          (entries) => ({
-            totalEntries: entries.length,
-            totalHits: entries.reduce((sum, e) => sum + e.hits, 0),
-            averageAge: entries.reduce((sum, e) => sum + e.age, 0) / entries.length || 0,
-            totalSize: entries.reduce((sum, e) => sum + e.size, 0),
-            mostUsed: entries.sort((a, b) => b.hits - a.hits).slice(0, 5)
-          })
-        )
+        const entries = Record.collect(cache, (key, entry) => ({
+          key,
+          age: Date.now() - entry.timestamp,
+          hits: entry.hits,
+          size: JSON.stringify(entry.value).length // Rough estimate
+        }))
+
+        return {
+          totalEntries: entries.length,
+          totalHits: entries.reduce((sum, e) => sum + e.hits, 0),
+          averageAge: entries.reduce((sum, e) => sum + e.age, 0) / entries.length || 0,
+          totalSize: entries.reduce((sum, e) => sum + e.size, 0),
+          mostUsed: entries.sort((a, b) => b.hits - a.hits).slice(0, 5)
+        }
       }),
       
       // Clear cache
@@ -1516,7 +1395,7 @@ const UserSchema = Schema.Struct({
   name: Schema.String,
   email: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
   age: Schema.Number.pipe(Schema.between(18, 120)),
-  preferences: Schema.Record(Schema.String, Schema.Unknown)
+  preferences: Schema.Record({ key: Schema.String, value: Schema.Unknown })
 })
 
 const ProductSchema = Schema.Struct({
@@ -1534,9 +1413,8 @@ export const SchemaRecordUtils = {
     schema: Schema.Schema<A, I>,
     record: Record<string, I>
   ) => Effect.gen(function* () {
-    const validationResults = pipe(
-      record,
-      Record.map((value, key) => Schema.decodeUnknown(schema)(value))
+    const validationResults = Record.map(record, (value, key) => 
+      Schema.decodeUnknown(schema)(value)
     )
 
     // Execute all validations
@@ -1545,20 +1423,14 @@ export const SchemaRecordUtils = {
     })
 
     // Separate successful and failed validations
-    const [failures, successes] = pipe(
-      results,
-      Record.partitionMap((result, key) =>
-        result._tag === "Left"
-          ? Either.left({ key, error: result.left })
-          : Either.right({ key, value: result.right })
-      )
+    const [failures, successes] = Record.partitionMap(results, (result, key) =>
+      result._tag === "Left"
+        ? Either.left({ key, error: result.left })
+        : Either.right({ key, value: result.right })
     )
 
     return {
-      valid: pipe(
-        successes,
-        Record.map(({ value }) => value)
-      ),
+      valid: Record.map(successes, ({ value }) => value),
       invalid: failures,
       summary: {
         totalCount: Record.size(record),
@@ -1605,20 +1477,17 @@ const processEcommerceData = (rawData: {
   })
 
   // Process valid data
-  const processedData = pipe(
-    validationResults.users.valid,
-    Record.filterMap((user, userId) => {
-      // Only include adult users with preferences
-      if (user.age >= 21 && Record.size(user.preferences) > 0) {
-        return Option.some({
-          ...user,
-          segment: user.age < 35 ? "young_adult" : "adult",
-          hasPreferences: true
-        })
-      }
-      return Option.none()
-    })
-  )
+  const processedData = Record.filterMap(validationResults.users.valid, (user, userId) => {
+    // Only include adult users with preferences
+    if (user.age >= 21 && Record.size(user.preferences) > 0) {
+      return Option.some({
+        ...user,
+        segment: user.age < 35 ? "young_adult" : "adult",
+        hasPreferences: true
+      })
+    }
+    return Option.none()
+  })
 
   return {
     processedUsers: processedData,
@@ -1631,7 +1500,7 @@ const processEcommerceData = (rawData: {
 ### Integration with Effect for Async Operations
 
 ```typescript
-import { Record, pipe, Effect, Duration, Schedule } from "effect"
+import { Record, pipe, Effect, Duration, Schedule, Stream, Array as Arr } from "effect"
 
 // Async record processing with Effect
 export const AsyncRecordProcessor = {
@@ -1652,15 +1521,12 @@ export const AsyncRecordProcessor = {
     } = options
 
     // Convert record to array of effects
-    const effects = pipe(
-      record,
-      Record.collect((key, value) => 
-        pipe(
-          processor(value, key),
-          Effect.retry(retryPolicy),
-          Effect.timeout(timeout),
-          Effect.map((result) => ({ key, result }))
-        )
+    const effects = Record.collect(record, (key, value) => 
+      pipe(
+        processor(value, key),
+        Effect.retry(retryPolicy),
+        Effect.timeout(timeout),
+        Effect.map((result) => ({ key, result }))
       )
     )
 
@@ -1671,13 +1537,10 @@ export const AsyncRecordProcessor = {
     })
 
     // Reconstruct record from results
-    const [successes, failures] = pipe(
-      results,
-      Array.partitionMap((result) =>
-        result._tag === "Left"
-          ? Either.left(result.left)
-          : Either.right(result.right)
-      )
+    const [successes, failures] = Arr.partitionMap(results, (result) =>
+      result._tag === "Left"
+        ? Either.left(result.left)
+        : Either.right(result.right)
     )
 
     const successRecord = successes.reduce(
@@ -1704,10 +1567,7 @@ export const AsyncRecordProcessor = {
     batchSize: number = 10
   ) => Effect.gen(function* () {
     // Convert record to batches
-    const entries = pipe(
-      records,
-      Record.collect((key, value) => ({ key, value }))
-    )
+    const entries = Record.collect(records, (key, value) => ({ key, value }))
 
     const batches = []
     for (let i = 0; i < entries.length; i += batchSize) {
@@ -1767,8 +1627,7 @@ export const AsyncRecordProcessor = {
     bufferSize: number = 100
   ) => Effect.gen(function* () {
     const stream = pipe(
-      record,
-      Record.collect((key, value) => ({ key, value })),
+      Record.collect(record, (key, value) => ({ key, value })),
       Stream.fromIterable,
       Stream.mapEffect(({ key, value }) => 
         pipe(
@@ -1781,11 +1640,8 @@ export const AsyncRecordProcessor = {
 
     const results = yield* Stream.runCollect(stream)
 
-    return pipe(
-      results,
-      Array.reduce({} as Record<K, B>, (acc, { key, result }) =>
-        Record.set(acc, key as K, result)
-      )
+    return Arr.reduce(results, {} as Record<K, B>, (acc, { key, result }) =>
+      Record.set(acc, key as K, result)
     )
   })
 }
@@ -1830,7 +1686,7 @@ const createImageProcessor = () => Effect.gen(function* () {
 ### Testing Strategies
 
 ```typescript
-import { Record, pipe, Effect, TestContext, it, expect } from "effect"
+import { Record, pipe, Effect, TestContext, it, expect, Duration } from "effect"
 
 // Property-based testing helpers for Record operations
 export const RecordTestUtils = {
@@ -1891,7 +1747,8 @@ describe("Record Operations", () => {
         preservesSize: true,
         customInvariant: (original, result) => {
           return Record.every(original, (value, key) => 
-            Record.get(result, key).pipe(
+            pipe(
+              Record.get(result, key),
               Option.match({
                 onNone: () => false,
                 onSome: (resultValue) => resultValue === value * 2
@@ -1911,10 +1768,7 @@ describe("Record Operations", () => {
       "user4": { age: 22, active: true }
     }
 
-    const activeAdults = pipe(
-      users,
-      Record.filter((user) => user.active && user.age >= 18)
-    )
+    const activeAdults = Record.filter(users, (user) => user.active && user.age >= 18)
 
     expect(Record.size(activeAdults)).toBe(2)
     expect(Record.has(activeAdults, "user1")).toBe(true)
@@ -1927,10 +1781,7 @@ describe("Record Operations", () => {
     const permissions1 = { read: true, write: false }
     const permissions2 = { write: true, delete: true }
 
-    const combined = pipe(
-      permissions1,
-      Record.union(permissions2, (a, b) => a || b)
-    )
+    const combined = Record.union(permissions1, permissions2, (a, b) => a || b)
 
     expect(combined).toEqual({
       read: true,
@@ -1942,14 +1793,11 @@ describe("Record Operations", () => {
   it("collect transforms record to array correctly", () => {
     const scores = { math: 95, science: 87, english: 92 }
     
-    const report = pipe(
-      scores,
-      Record.collect((subject, score) => ({
-        subject,
-        score,
-        grade: score >= 90 ? "A" : score >= 80 ? "B" : "C"
-      }))
-    )
+    const report = Record.collect(scores, (subject, score) => ({
+      subject,
+      score,
+      grade: score >= 90 ? "A" : score >= 80 ? "B" : "C"
+    }))
 
     expect(report).toHaveLength(3)
     expect(report.find(r => r.subject === "math")?.grade).toBe("A")
@@ -1977,7 +1825,7 @@ describe("Record with Effect Integration", () => {
 
       expect(Record.size(result.successes)).toBe(3)
       expect(result.summary.successRate).toBe(1)
-      expect(Record.get(result.successes, "item1")).toEqual(Option.some(20))
+      expect(pipe(Record.get(result.successes, "item1"), Option.getOrNull)).toBe(20)
     }).pipe(Effect.provide(TestContext.TestContext))
   )
 })
