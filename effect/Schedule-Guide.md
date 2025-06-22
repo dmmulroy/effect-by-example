@@ -170,9 +170,7 @@ const performTask = () => Effect.sync(() => console.log("Task performed"))
 
 const periodicTask = Effect.repeat(
   performTask(),
-  Schedule.fixed("5 seconds").pipe(
-    Schedule.whileOutput(() => Effect.succeed(true))
-  )
+  Schedule.whileOutput(Schedule.fixed("5 seconds"), () => Effect.succeed(true))
 )
 
 // Complex retry combinations made simple
@@ -298,9 +296,7 @@ const createPeriodicProcessor = Effect.gen(function* () {
       )
     ),
     Effect.repeat(
-      Schedule.fixed("5 seconds").pipe(
-        Schedule.whileOutput(() => Ref.get(shouldContinueRef))
-      )
+      Schedule.whileOutput(Schedule.fixed("5 seconds"), () => Ref.get(shouldContinueRef))
     )
   )
   

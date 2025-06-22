@@ -86,9 +86,7 @@ function getUserProfile(userId: string): Option.Option<UserProfile> {
       name: user.name,
       email: user.email,
       avatar: Option.fromNullable(user.avatar),
-      lastLoginAt: Option.fromNullable(user.lastLoginAt).pipe(
-        Option.map(timestamp => new Date(timestamp))
-      )
+      lastLoginAt: Option.map(Option.fromNullable(user.lastLoginAt), timestamp => new Date(timestamp))
     }))
   )
 }
@@ -288,8 +286,8 @@ const renderUserCard = (userId: string): string => {
         const avatar = getUserAvatar(user)
         const bio = Option.getOrElse(getUserBio(user), () => "No bio available")
         
-        const twitterLink = pipe(
-          Option.map(getSocialLink(user, "twitter"), handle => `https://twitter.com/${handle}`),
+        const twitterLink = getSocialLink(user, "twitter").pipe(
+          Option.map(handle => `https://twitter.com/${handle}`),
           Option.getOrElse(() => "")
         )
         
@@ -312,8 +310,8 @@ const getUsersWithProfiles = (): User[] =>
 
 const getUsersWithBios = (): User[] =>
   users.filter(user => 
-    pipe(
-      Option.flatMap(user.profile, profile => profile.bio),
+    user.profile.pipe(
+      Option.flatMap(profile => profile.bio),
       Option.isSome
     )
   )
@@ -415,8 +413,8 @@ const matchesQuery = (product: Product, query: string): boolean => {
   const searchText = query.toLowerCase()
   const nameMatch = product.name.toLowerCase().includes(searchText)
   const tagMatch = product.tags.some(tag => tag.toLowerCase().includes(searchText))
-  const descriptionMatch = pipe(
-    Option.map(product.description, desc => desc.toLowerCase().includes(searchText)),
+  const descriptionMatch = product.description.pipe(
+    Option.map(desc => desc.toLowerCase().includes(searchText)),
     Option.getOrElse(() => false)
   )
   
@@ -444,8 +442,8 @@ const matchesPriceRange = (
 const hasMinimumRating = (product: Product, minRating: Option.Option<number>): boolean =>
   Option.match(minRating, {
     onNone: () => true,
-    onSome: (min) => pipe(
-      Option.map(product.rating, rating => rating >= min),
+    onSome: (min) => product.rating.pipe(
+      Option.map(rating => rating >= min),
       Option.getOrElse(() => false)
     )
   })
@@ -488,8 +486,8 @@ const searchProducts = (filters: SearchFilters): Product[] => {
 // Advanced search operations
 const getProductsBySupplierLocation = (location: string): Product[] =>
   products.filter(product =>
-    pipe(
-      Option.flatMap(product.supplier, supplier => supplier.location),
+    product.supplier.pipe(
+      Option.flatMap(supplier => supplier.location),
       Option.map(loc => loc.toLowerCase().includes(location.toLowerCase())),
       Option.getOrElse(() => false)
     )
@@ -497,8 +495,8 @@ const getProductsBySupplierLocation = (location: string): Product[] =>
 
 const getTopRatedProducts = (minRating: number = 4.0): Product[] =>
   products.filter(product =>
-    pipe(
-      Option.map(product.rating, rating => rating >= minRating),
+    product.rating.pipe(
+      Option.map(rating => rating >= minRating),
       Option.getOrElse(() => false)
     )
   )
@@ -589,57 +587,33 @@ const loadConfigFromEnv = (): AppConfig => ({
     database: process.env.DB_NAME || "myapp",
     username: process.env.DB_USER || "user",
     password: Option.fromNullable(process.env.DB_PASSWORD),
-    ssl: Option.fromNullable(process.env.DB_SSL).pipe(
-      Option.map(value => value.toLowerCase() === "true")
-    ),
-    timeout: Option.fromNullable(process.env.DB_TIMEOUT).pipe(
-      Option.map(value => parseInt(value))
-    ),
-    poolSize: Option.fromNullable(process.env.DB_POOL_SIZE).pipe(
-      Option.map(value => parseInt(value))
-    )
+    ssl: Option.map(Option.fromNullable(process.env.DB_SSL), value => value.toLowerCase() === "true"),
+    timeout: Option.map(Option.fromNullable(process.env.DB_TIMEOUT), value => parseInt(value)),
+    poolSize: Option.map(Option.fromNullable(process.env.DB_POOL_SIZE), value => parseInt(value))
   },
   
   cache: {
     enabled: process.env.CACHE_ENABLED !== "false",
-    ttl: Option.fromNullable(process.env.CACHE_TTL).pipe(
-      Option.map(value => parseInt(value))
-    ),
-    maxSize: Option.fromNullable(process.env.CACHE_MAX_SIZE).pipe(
-      Option.map(value => parseInt(value))
-    ),
-    strategy: Option.fromNullable(process.env.CACHE_STRATEGY).pipe(
-      Option.filter((value): value is "lru" | "fifo" | "lfu" => 
-        ["lru", "fifo", "lfu"].includes(value)
-      )
+    ttl: Option.map(Option.fromNullable(process.env.CACHE_TTL), value => parseInt(value)),
+    maxSize: Option.map(Option.fromNullable(process.env.CACHE_MAX_SIZE), value => parseInt(value)),
+    strategy: Option.filter(Option.fromNullable(process.env.CACHE_STRATEGY), (value): value is "lru" | "fifo" | "lfu" => 
+      ["lru", "fifo", "lfu"].includes(value)
     )
   },
   
   api: {
     baseUrl: process.env.API_BASE_URL || "http://localhost:3000",
-    timeout: Option.fromNullable(process.env.API_TIMEOUT).pipe(
-      Option.map(value => parseInt(value))
-    ),
-    retries: Option.fromNullable(process.env.API_RETRIES).pipe(
-      Option.map(value => parseInt(value))
-    ),
+    timeout: Option.map(Option.fromNullable(process.env.API_TIMEOUT), value => parseInt(value)),
+    retries: Option.map(Option.fromNullable(process.env.API_RETRIES), value => parseInt(value)),
     apiKey: Option.fromNullable(process.env.API_KEY),
-    rateLimit: Option.fromNullable(process.env.API_RATE_LIMIT).pipe(
-      Option.map(value => JSON.parse(value))
-    )
+    rateLimit: Option.map(Option.fromNullable(process.env.API_RATE_LIMIT), value => JSON.parse(value))
   },
   
   features: {
     enableLogging: process.env.ENABLE_LOGGING !== "false",
-    enableMetrics: Option.fromNullable(process.env.ENABLE_METRICS).pipe(
-      Option.map(value => value.toLowerCase() === "true")
-    ),
-    enableTracing: Option.fromNullable(process.env.ENABLE_TRACING).pipe(
-      Option.map(value => value.toLowerCase() === "true")
-    ),
-    maintenanceMode: Option.fromNullable(process.env.MAINTENANCE_MODE).pipe(
-      Option.map(value => value.toLowerCase() === "true")
-    )
+    enableMetrics: Option.map(Option.fromNullable(process.env.ENABLE_METRICS), value => value.toLowerCase() === "true"),
+    enableTracing: Option.map(Option.fromNullable(process.env.ENABLE_TRACING), value => value.toLowerCase() === "true"),
+    maintenanceMode: Option.map(Option.fromNullable(process.env.MAINTENANCE_MODE), value => value.toLowerCase() === "true")
   }
 })
 
@@ -820,8 +794,8 @@ const findCompany = (id: string): Option.Option<Company> =>
 
 // Chain operations to get user's company address
 const getUserCompanyAddress = (userId: string): Option.Option<Address> =>
-  pipe(
-    Option.flatMap(findUser(userId), user => user.companyId),    // Option<string>
+  findUser(userId).pipe(
+    Option.flatMap(user => user.companyId),    // Option<string>
     Option.flatMap(companyId => findCompany(companyId)), // Option<Company>
     Option.flatMap(company => company.address) // Option<Address>
   )
@@ -903,18 +877,18 @@ interface EnrichedBlogPost {
 }
 
 const enrichBlogPost = (postId: string): Option.Option<EnrichedBlogPost> =>
-  pipe(
-    Option.flatMap(Option.fromNullable(posts.find(p => p.id === postId)), post =>
-      pipe(
-        Option.map(Option.fromNullable(authors.find(a => a.id === post.authorId)), author => {
-          const category = pipe(
-            Option.flatMap(post.categoryId, catId => 
+  Option.fromNullable(posts.find(p => p.id === postId)).pipe(
+    Option.flatMap(post =>
+      Option.fromNullable(authors.find(a => a.id === post.authorId)).pipe(
+        Option.map(author => {
+          const category = post.categoryId.pipe(
+            Option.flatMap(catId => 
               Option.fromNullable(categories.find(c => c.id === catId))
             )
           )
           
-          const authorTwitter = pipe(
-            Option.flatMap(author.socialLinks, links => links.twitter)
+          const authorTwitter = author.socialLinks.pipe(
+            Option.flatMap(links => links.twitter)
           )
           
           return {
@@ -930,13 +904,13 @@ const enrichBlogPost = (postId: string): Option.Option<EnrichedBlogPost> =>
 
 // Generate social sharing text with optional data
 const generateShareText = (enrichedPost: EnrichedBlogPost): string => {
-  const categoryText = pipe(
-    Option.map(enrichedPost.category, cat => ` in ${cat.name}`),
+  const categoryText = enrichedPost.category.pipe(
+    Option.map(cat => ` in ${cat.name}`),
     Option.getOrElse(() => "")
   )
   
-  const authorMention = pipe(
-    Option.map(enrichedPost.authorTwitter, handle => ` by ${handle}`),
+  const authorMention = enrichedPost.authorTwitter.pipe(
+    Option.map(handle => ` by ${handle}`),
     Option.getOrElse(() => ` by ${enrichedPost.author.name}`)
   )
   
@@ -964,10 +938,10 @@ const multiply = (a: number, b: number): number => a * b
 
 // Using Option.map2 to combine two Options
 const addOptions = (a: Option.Option<number>, b: Option.Option<number>): Option.Option<number> =>
-  pipe(
-    Option.flatMap(a, valueA =>
-      pipe(
-        Option.map(b, valueB => add(valueA, valueB))
+  a.pipe(
+    Option.flatMap(valueA =>
+      b.pipe(
+        Option.map(valueB => add(valueA, valueB))
       )
     )
   )
@@ -1028,10 +1002,10 @@ const firstSome = findFirstSome(numbers) // Some(1)
 const sequenceOptions = <A>(options: Option.Option<A>[]): Option.Option<A[]> =>
   options.reduce(
     (acc: Option.Option<A[]>, current: Option.Option<A>) =>
-      pipe(
-        Option.flatMap(acc, array =>
-          pipe(
-            Option.map(current, value => [...array, value])
+      acc.pipe(
+        Option.flatMap(array =>
+          current.pipe(
+            Option.map(value => [...array, value])
           )
         )
       ),
@@ -1196,8 +1170,7 @@ interface ValidatedUser {
 
 // Validation functions
 const validateName = (name: Option.Option<string>): Either.Either<ValidationError, string> =>
-  pipe(
-    name,
+  name.pipe(
     Option.filter(n => n.trim().length >= 2),
     Either.fromOption(() => ({
       field: "name",
@@ -1206,8 +1179,7 @@ const validateName = (name: Option.Option<string>): Either.Either<ValidationErro
   )
 
 const validateEmail = (email: Option.Option<string>): Either.Either<ValidationError, string> =>
-  pipe(
-    email,
+  email.pipe(
     Option.filter(e => e.includes("@") && e.includes(".")),
     Either.fromOption(() => ({
       field: "email", 
@@ -1216,8 +1188,7 @@ const validateEmail = (email: Option.Option<string>): Either.Either<ValidationEr
   )
 
 const validateAge = (age: Option.Option<number>): Either.Either<ValidationError, number> =>
-  pipe(
-    age,
+  age.pipe(
     Option.filter(a => a >= 18 && a <= 120),
     Either.fromOption(() => ({
       field: "age",
@@ -1226,8 +1197,7 @@ const validateAge = (age: Option.Option<number>): Either.Either<ValidationError,
   )
 
 const validatePassword = (password: Option.Option<string>): Either.Either<ValidationError, string> =>
-  pipe(
-    password,
+  password.pipe(
     Option.filter(p => p.length >= 8),
     Either.fromOption(() => ({
       field: "password",
@@ -1241,8 +1211,7 @@ const validateOptionalField = <T>(
   validator: (value: T) => boolean,
   errorMessage: string
 ): Option.Option<T> =>
-  pipe(
-    value,
+  value.pipe(
     Option.filter(validator)
   )
 
@@ -1250,8 +1219,7 @@ const validateRequiredField = <T>(
   value: Option.Option<T>,
   fieldName: string
 ): Either.Either<ValidationError, T> =>
-  pipe(
-    value,
+  value.pipe(
     Either.fromOption(() => ({
       field: fieldName,
       message: `${fieldName} is required`
@@ -1285,14 +1253,14 @@ const validateUserWithOptions = (input: UserInput): Option.Option<ValidatedUser>
   )
 
   // All validations must pass
-  return pipe(
-    Option.flatMap(validName, name =>
-      pipe(
-        Option.flatMap(validEmail, email =>
-          pipe(
-            Option.flatMap(validAge, age =>
-              pipe(
-                Option.map(validPassword, password => ({
+  return validName.pipe(
+    Option.flatMap(name =>
+      validEmail.pipe(
+        Option.flatMap(email =>
+          validAge.pipe(
+            Option.flatMap(age =>
+              validPassword.pipe(
+                Option.map(password => ({
                   name,
                   email,
                   age,
@@ -1492,8 +1460,8 @@ class UserService {
 
     // Get user and extract preferences
     const user = await this.getUser(userId)
-    return pipe(
-      Option.map(user, u => {
+    return user.pipe(
+      Option.map(u => {
         this.prefCache.set(userId, u.preferences, 120000) // Cache for 2 minutes
         return u.preferences
       })
@@ -1506,8 +1474,8 @@ class UserService {
   ): Promise<Option.Option<UserPreferences>> {
     const currentPrefs = await this.getUserPreferences(userId)
     
-    return pipe(
-      Option.map(currentPrefs, current => {
+    return currentPrefs.pipe(
+      Option.map(current => {
         const updated = { ...current, ...preferences }
         
         // Update both caches
@@ -1785,16 +1753,14 @@ class CartService {
   }
 
   calculateDiscount(cart: ShoppingCart, subtotal: number): number {
-    return pipe(
-      cart.discountCode,
+    return cart.discountCode.pipe(
       Option.map(code => this.getDiscountAmount(code, subtotal)),
       Option.getOrElse(() => 0)
     )
   }
 
   calculateShipping(cart: ShoppingCart, subtotal: number): number {
-    return pipe(
-      cart.shippingAddress,
+    return cart.shippingAddress.pipe(
       Option.map(address => this.getShippingCost(address, subtotal)),
       Option.getOrElse(() => 0)
     )

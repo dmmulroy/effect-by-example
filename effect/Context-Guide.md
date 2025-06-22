@@ -1012,9 +1012,9 @@ const ConfigServiceLive = Layer.effect(
   Effect.gen(function* () {
     // Load configuration from environment variables with defaults
     const databaseConfig = yield* Effect.all({
-      host: Config.string("DB_HOST").pipe(Config.withDefault("localhost")),
-      port: Config.integer("DB_PORT").pipe(Config.withDefault(5432)),
-      database: Config.string("DB_NAME").pipe(Config.withDefault("app")),
+      host: Config.withDefault(Config.string("DB_HOST"), "localhost"),
+      port: Config.withDefault(Config.integer("DB_PORT"), 5432),
+      database: Config.withDefault(Config.string("DB_NAME"), "app"),
       pool: Effect.succeed({
         min: 2,
         max: 10,
@@ -1023,14 +1023,14 @@ const ConfigServiceLive = Layer.effect(
     })
     
     const redisConfig = yield* Effect.all({
-      host: Config.string("REDIS_HOST").pipe(Config.withDefault("localhost")),
-      port: Config.integer("REDIS_PORT").pipe(Config.withDefault(6379)),
-      keyPrefix: Config.string("REDIS_PREFIX").pipe(Config.withDefault("app:"))
+      host: Config.withDefault(Config.string("REDIS_HOST"), "localhost"),
+      port: Config.withDefault(Config.integer("REDIS_PORT"), 6379),
+      keyPrefix: Config.withDefault(Config.string("REDIS_PREFIX"), "app:")
     })
     
     const serverConfig = yield* Effect.all({
-      port: Config.integer("PORT").pipe(Config.withDefault(3000)),
-      host: Config.string("HOST").pipe(Config.withDefault("0.0.0.0"))
+      port: Config.withDefault(Config.integer("PORT"), 3000),
+      host: Config.withDefault(Config.string("HOST"), "0.0.0.0")
     })
     
     return {

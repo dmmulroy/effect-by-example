@@ -575,7 +575,7 @@ const adminRouter = HttpRouter.empty.pipe(
 // Main Application Router
 const appRouter = HttpRouter.empty.pipe(
   HttpRouter.mount("/auth", authRouter),
-  HttpRouter.mount("/user", userRouter.pipe(HttpRouter.use(authMiddleware))),
+  HttpRouter.mount("/user", HttpRouter.use(userRouter, authMiddleware)),
   HttpRouter.mount("/admin", adminRouter),
   HttpRouter.get("/health", healthCheckHandler)
 )
@@ -667,7 +667,7 @@ const protectedRouter = HttpRouter.empty.pipe(
     Effect.gen(function* () {
       const user = yield* CurrentUser
       return user
-    }).pipe(requireAuth)
+    }), requireAuth)
   )
 )
 ```

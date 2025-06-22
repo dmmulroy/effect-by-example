@@ -1324,8 +1324,9 @@ const TimeScheduler = {
     max: Duration.Duration,
     factor = 2
   ) =>
-    Schedule.exponential(initial, factor).pipe(
-      Schedule.either(Schedule.spaced(max))
+    Schedule.either(
+      Schedule.exponential(initial, factor),
+      Schedule.spaced(max)
     ),
   
   // Schedule with jitter to avoid thundering herd
@@ -1337,8 +1338,9 @@ const TimeScheduler = {
     baseSchedule: Schedule.Schedule<unknown, unknown, Duration.Duration>,
     timezone = "UTC"
   ) =>
-    baseSchedule.pipe(
-      Schedule.whileOutput(() =>
+    Schedule.whileOutput(
+      baseSchedule,
+      () =>
         Effect.gen(function* () {
           const now = yield* Clock.currentTimeMillis
           const date = new Date(now)
@@ -1348,7 +1350,6 @@ const TimeScheduler = {
           // Monday-Friday, 9 AM - 5 PM
           return dayOfWeek >= 1 && dayOfWeek <= 5 && hour >= 9 && hour < 17
         })
-      )
     ),
   
   // Conditional scheduling
@@ -1356,9 +1357,7 @@ const TimeScheduler = {
     condition: Effect.Effect<boolean>,
     schedule: Schedule.Schedule<unknown, A, Duration.Duration>
   ) =>
-    schedule.pipe(
-      Schedule.whileOutput(() => condition)
-    )
+    Schedule.whileOutput(schedule, () => condition)
 }
 
 // Advanced scheduling example

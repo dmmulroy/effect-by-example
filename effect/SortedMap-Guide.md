@@ -120,8 +120,8 @@ import { SortedMap, Order, pipe } from "effect"
 // Type-safe sorted collection with custom ordering
 const priceIndex = SortedMap.empty<string, number>(Order.number)
 
-const withPrices = pipe(
-  SortedMap.set(priceIndex, "laptop", 999.99),
+const withPrices = priceIndex.pipe(
+  SortedMap.set("laptop", 999.99),
   SortedMap.set("mouse", 29.99),
   SortedMap.set("keyboard", 79.99),
   SortedMap.set("monitor", 299.99)
@@ -145,9 +145,8 @@ const timeBasedOrder = Order.mapInput(
 const activityLog = SortedMap.empty<TimeEntry, string>(timeBasedOrder)
 
 // Automatic ordering maintenance
-const withActivities = pipe(
+const withActivities = activityLog.pipe(
   SortedMap.set(
-    activityLog,
     { timestamp: new Date('2024-01-15T10:30:00'), userId: 'user1', action: 'login' },
     'User logged in'
   ),
@@ -207,8 +206,8 @@ const versionOrder = Order.struct({
 
 const versionHistory = SortedMap.empty<Version, string>(versionOrder)
 
-const withVersions = pipe(
-  SortedMap.set(versionHistory, { major: 1, minor: 0, patch: 0 }, "Initial release"),
+const withVersions = versionHistory.pipe(
+  SortedMap.set({ major: 1, minor: 0, patch: 0 }, "Initial release"),
   SortedMap.set({ major: 1, minor: 1, patch: 0 }, "Feature update"),
   SortedMap.set({ major: 1, minor: 0, patch: 1 }, "Bug fix"),
   SortedMap.set({ major: 2, minor: 0, patch: 0 }, "Major release")
@@ -217,8 +216,7 @@ const withVersions = pipe(
 // Date-based ordering
 const eventLog = SortedMap.empty<Date, string>(Order.Date)
 
-const withEvents = pipe(
-  eventLog,
+const withEvents = eventLog.pipe(
   SortedMap.set(new Date('2024-01-15'), "Project started"),
   SortedMap.set(new Date('2024-02-01'), "First milestone"),
   SortedMap.set(new Date('2024-01-20'), "Team meeting")
@@ -230,8 +228,7 @@ const withEvents = pipe(
 ```typescript
 import { SortedMap, Order, pipe, Option } from "effect"
 
-const inventory = pipe(
-  SortedMap.empty<string, number>(Order.string),
+const inventory = SortedMap.empty<string, number>(Order.string).pipe(
   SortedMap.set("apples", 50),
   SortedMap.set("bananas", 30),
   SortedMap.set("cherries", 20),
@@ -250,15 +247,13 @@ const hasMangos = SortedMap.has(inventory, "mangos")   // false
 const itemCount = SortedMap.size(inventory)  // 4
 
 // Updating values
-const updatedInventory = pipe(
-  inventory,
+const updatedInventory = inventory.pipe(
   SortedMap.set("apples", 45),      // Update existing
   SortedMap.set("elderberries", 10) // Add new
 )
 
 // Removing values
-const afterSale = pipe(
-  inventory,
+const afterSale = inventory.pipe(
   SortedMap.remove("dates"),
   SortedMap.modify("apples", count => count - 5)
 )
@@ -273,8 +268,7 @@ const lastItem = SortedMap.last(inventory)   // Option.some(["dates", 15])
 ```typescript
 import { SortedMap, Order, pipe } from "effect"
 
-const grades = pipe(
-  SortedMap.empty<string, number>(Order.string),
+const grades = SortedMap.empty<string, number>(Order.string).pipe(
   SortedMap.set("Alice", 95),
   SortedMap.set("Bob", 87),
   SortedMap.set("Charlie", 92),
@@ -296,8 +290,7 @@ const scores = Array.from(SortedMap.values(grades))
 
 // Reverse iteration
 const reverseOrder = SortedMap.empty<string, number>(Order.reverse(Order.string))
-const reverseGrades = pipe(
-  reverseOrder,
+const reverseGrades = reverseOrder.pipe(
   SortedMap.set("Alice", 95),
   SortedMap.set("Bob", 87),
   SortedMap.set("Charlie", 92)
@@ -307,8 +300,7 @@ const reverseStudents = Array.from(SortedMap.keys(reverseGrades))
 // ["Charlie", "Bob", "Alice"]
 
 // Custom iteration with reduce
-const classAverage = pipe(
-  grades,
+const classAverage = grades.pipe(
   SortedMap.reduce(
     { total: 0, count: 0 },
     (acc, value) => ({
@@ -344,8 +336,7 @@ class TimeSeriesStore {
   
   // Add new data point
   addPoint(point: MetricPoint): TimeSeriesStore {
-    const updated = pipe(
-      this.data,
+    const updated = this.data.pipe(
       SortedMap.set(point.timestamp, point)
     )
     return new TimeSeriesStore().withData(updated)
@@ -353,8 +344,7 @@ class TimeSeriesStore {
   
   // Get data within time range
   getRange(start: Date, end: Date): ReadonlyArray<MetricPoint> {
-    return pipe(
-      this.data,
+    return this.data.pipe(
       SortedMap.between(start, end),
       Array.from,
       arr => arr.map(([, point]) => point)
@@ -363,8 +353,7 @@ class TimeSeriesStore {
   
   // Get latest N points
   getLatest(n: number): ReadonlyArray<MetricPoint> {
-    return pipe(
-      this.data,
+    return this.data.pipe(
       SortedMap.entries,
       Array.from,
       arr => arr.slice(-n).map(([, point]) => point)
@@ -464,8 +453,7 @@ class OrderBook {
   addOrder(side: 'buy' | 'sell', order: Order): OrderBook {
     const book = side === 'buy' ? this.bids : this.asks
     
-    const updated = pipe(
-      book,
+    const updated = book.pipe(
       SortedMap.modifyOption(
         order.price,
         existing => [...existing, order]
@@ -505,8 +493,7 @@ class OrderBook {
     const aggregateOrders = (orders: Order[]) =>
       orders.reduce((sum, order) => sum + order.quantity, 0)
     
-    const bidDepth = pipe(
-      this.bids,
+    const bidDepth = this.bids.pipe(
       SortedMap.entries,
       Array.from,
       arr => arr.slice(0, levels).map(([price, orders]) => 
@@ -514,8 +501,7 @@ class OrderBook {
       )
     )
     
-    const askDepth = pipe(
-      this.asks,
+    const askDepth = this.asks.pipe(
       SortedMap.entries,
       Array.from,
       arr => arr.slice(0, levels).map(([price, orders]) => 
@@ -561,8 +547,7 @@ class OrderBook {
   getOrdersInRange(side: 'buy' | 'sell', minPrice: number, maxPrice: number): Order[] {
     const book = side === 'buy' ? this.bids : this.asks
     
-    return pipe(
-      book,
+    return book.pipe(
       SortedMap.between(minPrice, maxPrice),
       Array.from,
       arr => arr.flatMap(([, orders]) => orders)
@@ -671,8 +656,7 @@ class IndexedTable {
       field3: field3Range?.[1] ?? new Date(8640000000000000)
     }
     
-    return pipe(
-      this.compoundIndex,
+    return this.compoundIndex.pipe(
       SortedMap.between(minKey, maxKey),
       Array.from,
       arr => arr.map(([, id]) => SortedMap.unsafeGet(this.primaryKey, id)),
@@ -702,8 +686,7 @@ class IndexedTable {
       field3: new Date(8640000000000000)
     }
     
-    return pipe(
-      this.compoundIndex,
+    return this.compoundIndex.pipe(
       SortedMap.between(minKey, maxKey),
       Array.from,
       arr => arr.map(([, id]) => SortedMap.unsafeGet(this.primaryKey, id))
@@ -825,8 +808,7 @@ SortedMap provides powerful range query capabilities for extracting ordered subs
 ```typescript
 import { SortedMap, Order, pipe } from "effect"
 
-const temperatures = pipe(
-  SortedMap.empty<Date, number>(Order.Date),
+const temperatures = SortedMap.empty<Date, number>(Order.Date).pipe(
   SortedMap.set(new Date('2024-01-15T00:00:00'), 5.2),
   SortedMap.set(new Date('2024-01-15T06:00:00'), 8.1),
   SortedMap.set(new Date('2024-01-15T12:00:00'), 15.3),
@@ -835,8 +817,7 @@ const temperatures = pipe(
 )
 
 // Get all readings between two times
-const afternoon = pipe(
-  temperatures,
+const afternoon = temperatures.pipe(
   SortedMap.between(
     new Date('2024-01-15T12:00:00'),
     new Date('2024-01-15T23:59:59')
@@ -844,14 +825,12 @@ const afternoon = pipe(
 )
 
 // Get all readings after a specific time
-const evening = pipe(
-  temperatures,
+const evening = temperatures.pipe(
   SortedMap.greaterThan(new Date('2024-01-15T18:00:00'))
 )
 
 // Get all readings before noon
-const morning = pipe(
-  temperatures,
+const morning = temperatures.pipe(
   SortedMap.lessThanOrEqual(new Date('2024-01-15T12:00:00'))
 )
 ```
@@ -876,8 +855,7 @@ class PriceRangeAnalyzer {
   }
   
   addPricePoint(point: PricePoint): PriceRangeAnalyzer {
-    const updated = pipe(
-      this.data,
+    const updated = this.data.pipe(
       SortedMap.modifyOption(
         point.price,
         existing => [...existing, point]
@@ -909,8 +887,7 @@ class PriceRangeAnalyzer {
       .slice(0, 5)
       .map(([price]) => price)
     
-    const currentPrice = pipe(
-      SortedMap.last(this.data),
+    const currentPrice = SortedMap.last(this.data).pipe(
       Option.map(([price]) => price),
       Option.getOrElse(() => 0)
     )
@@ -923,8 +900,7 @@ class PriceRangeAnalyzer {
   
   // Volume-weighted average price in range
   vwapInRange(minPrice: number, maxPrice: number): number {
-    const pointsInRange = pipe(
-      this.data,
+    const pointsInRange = this.data.pipe(
       SortedMap.between(minPrice, maxPrice),
       Array.from,
       arr => arr.flatMap(([, points]) => points)
@@ -950,14 +926,12 @@ class PriceRangeAnalyzer {
     count: number,
     volume: number
   }> {
-    const minPrice = pipe(
-      SortedMap.head(this.data),
+    const minPrice = SortedMap.head(this.data).pipe(
       Option.map(([price]) => price),
       Option.getOrElse(() => 0)
     )
     
-    const maxPrice = pipe(
-      SortedMap.last(this.data),
+    const maxPrice = SortedMap.last(this.data).pipe(
       Option.map(([price]) => price),
       Option.getOrElse(() => 0)
     )
@@ -970,8 +944,7 @@ class PriceRangeAnalyzer {
     
     for (let start = minPrice; start < maxPrice; start += bucketSize) {
       const end = start + bucketSize
-      const pointsInBucket = pipe(
-        this.data,
+      const pointsInBucket = this.data.pipe(
         SortedMap.between(start, end),
         Array.from,
         arr => arr.flatMap(([, points]) => points)
@@ -1028,15 +1001,13 @@ function findNearest<K, V>(
   const exact = SortedMap.get(map, target)
   
   // Find closest lower value
-  const lower = pipe(
-    map,
+  const lower = map.pipe(
     SortedMap.lessThan(target),
     sm => SortedMap.last(sm)
   )
   
   // Find closest higher value
-  const higher = pipe(
-    map,
+  const higher = map.pipe(
     SortedMap.greaterThan(target),
     sm => SortedMap.head(sm)
   )
@@ -1067,8 +1038,7 @@ function interpolateValue(
 }
 
 // Usage example: Temperature interpolation
-const tempReadings = pipe(
-  SortedMap.empty<number, number>(Order.number), // hour -> temperature
+const tempReadings = SortedMap.empty<number, number>(Order.number).pipe(
   SortedMap.set(0, 15.0),
   SortedMap.set(6, 18.5),
   SortedMap.set(12, 25.0),
@@ -1096,10 +1066,9 @@ const distanceOrder = (center: { lat: number, lon: number }) =>
     }
   )
 
-const stores = pipe(
-  SortedMap.empty<Location, string>(
-    distanceOrder({ lat: 40.7128, lon: -74.0060 }) // NYC center
-  ),
+const stores = SortedMap.empty<Location, string>(
+  distanceOrder({ lat: 40.7128, lon: -74.0060 }) // NYC center
+).pipe(
   SortedMap.set(
     { latitude: 40.7580, longitude: -73.9855, name: 'Times Square' },
     'Store #1'
@@ -1133,8 +1102,7 @@ const caseInsensitiveOrder = Order.mapInput(
   (s: string) => s.toLowerCase()
 )
 
-const usernames = pipe(
-  SortedMap.empty<string, number>(caseInsensitiveOrder),
+const usernames = SortedMap.empty<string, number>(caseInsensitiveOrder).pipe(
   SortedMap.set('Alice', 1),
   SortedMap.set('BOB', 2),
   SortedMap.set('alice', 3), // Updates existing 'Alice' entry
@@ -1457,8 +1425,7 @@ function bulkUpdate<K, V>(
   onConflict: (existing: V, update: V) => V
 ): SortedMap.SortedMap<K, V> {
   return Array.from(updates).reduce(
-    (acc, [key, value]) => pipe(
-      acc,
+    (acc, [key, value]) => acc.pipe(
       SortedMap.modifyOption(
         key,
         existing => onConflict(existing, value)
@@ -1514,8 +1481,7 @@ interface DataPoint {
   value: number
 }
 
-const timeSeries = pipe(
-  SortedMap.empty<Date, DataPoint>(Order.Date),
+const timeSeries = SortedMap.empty<Date, DataPoint>(Order.Date).pipe(
   map => bulkInsert(map, [
     [new Date('2024-01-01T10:00'), { timestamp: new Date('2024-01-01T10:00'), value: 100 }],
     [new Date('2024-01-01T11:00'), { timestamp: new Date('2024-01-01T11:00'), value: 110 }],
@@ -1593,8 +1559,7 @@ class PaginatedSortedMap<K, V> {
     
     for (const pageNum of pageNums) {
       const page = this.pages.get(pageNum)!
-      const lastKey = pipe(
-        SortedMap.last(page),
+      const lastKey = SortedMap.last(page).pipe(
         Option.map(([k]) => k)
       )
       
@@ -1674,8 +1639,7 @@ class LRUCache<K, V> {
     
     if (value !== undefined) {
       // Remove old entry and add with new timestamp
-      this.data = pipe(
-        this.data,
+      this.data = this.data.pipe(
         map => {
           // Remove old
           const filtered = Array.from(map).filter(([k]) => k.key !== key)
@@ -1895,8 +1859,7 @@ describe("SortedMap Testing", () => {
   // Test custom orderings
   it("respects custom ordering", () => {
     const reverseOrder = Order.reverse(Order.number)
-    const map = pipe(
-      SortedMap.empty<number, string>(reverseOrder),
+    const map = SortedMap.empty<number, string>(reverseOrder).pipe(
       SortedMap.set(1, "one"),
       SortedMap.set(3, "three"),
       SortedMap.set(2, "two")
@@ -1921,8 +1884,7 @@ describe("SortedMap Testing", () => {
             SortedMap.empty<number, string>(Order.number)
           )
           
-          const inRange = pipe(
-            map,
+          const inRange = map.pipe(
             SortedMap.between(lower, upper),
             Array.from,
             arr => arr.map(([k]) => k)
@@ -1944,8 +1906,7 @@ describe("SortedMap Testing", () => {
   
   // Structural sharing test
   it("shares structure between versions", () => {
-    const map1 = pipe(
-      SortedMap.empty<string, number>(Order.string),
+    const map1 = SortedMap.empty<string, number>(Order.string).pipe(
       SortedMap.set("a", 1),
       SortedMap.set("b", 2),
       SortedMap.set("c", 3)
@@ -2039,8 +2000,7 @@ const customKeyOrder = Order.struct({
 
 describe("Custom key ordering", () => {
   it("orders by primary then secondary", () => {
-    const map = pipe(
-      SortedMap.empty<CustomKey, string>(customKeyOrder),
+    const map = SortedMap.empty<CustomKey, string>(customKeyOrder).pipe(
       SortedMap.set({ primary: "b", secondary: 1 }, "b1"),
       SortedMap.set({ primary: "a", secondary: 2 }, "a2"),
       SortedMap.set({ primary: "a", secondary: 1 }, "a1"),

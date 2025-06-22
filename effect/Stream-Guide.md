@@ -134,14 +134,10 @@ const ticks = Stream.repeatEffectWithSchedule(
 
 ```typescript
 // Map over stream values
-const doubled = Stream.make(1, 2, 3, 4, 5).pipe(
-  Stream.map(n => n * 2)
-)
+const doubled = Stream.map(Stream.make(1, 2, 3, 4, 5), n => n * 2)
 
 // Filter stream values  
-const evens = Stream.range(1, 10).pipe(
-  Stream.filter(n => n % 2 === 0)
-)
+const evens = Stream.filter(Stream.range(1, 10), n => n % 2 === 0)
 
 // FlatMap for dependent computations
 const expanded = Stream.make(1, 2, 3).pipe(
@@ -151,18 +147,14 @@ const expanded = Stream.make(1, 2, 3).pipe(
 )
 
 // Scan for running computations
-const runningSum = Stream.make(1, 2, 3, 4, 5).pipe(
-  Stream.scan(0, (acc, n) => acc + n)
-)
+const runningSum = Stream.scan(Stream.make(1, 2, 3, 4, 5), 0, (acc, n) => acc + n)
 ```
 
 ### Consuming Streams
 
 ```typescript
 // Collect all values into a Chunk
-const collected = Stream.make(1, 2, 3).pipe(
-  Stream.runCollect
-)
+const collected = Stream.runCollect(Stream.make(1, 2, 3))
 
 // Run for side effects
 const logged = Stream.make("Hello", "World").pipe(
@@ -171,9 +163,7 @@ const logged = Stream.make("Hello", "World").pipe(
 )
 
 // Fold into a single value
-const sum = Stream.range(1, 100).pipe(
-  Stream.runFold(0, (acc, n) => acc + n)
-)
+const sum = Stream.runFold(Stream.range(1, 100), 0, (acc, n) => acc + n)
 
 // Take only first n elements
 const firstFive = Stream.iterate(1, n => n + 1).pipe(

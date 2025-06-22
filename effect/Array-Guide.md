@@ -1761,7 +1761,7 @@ describe("Array Operations", () => {
   // Property-based tests
   test("flatMap followed by flatten is identity", () => {
     const input = [[1, 2], [3, 4], [5]]
-    const result1 = pipe(Arr.flatMap(input, x => x))
+    const result1 = Arr.flatMap(input, x => x)
     const result2 = Arr.flatten(input)
     expect(isEqualArray(result1, result2)).toBe(true)
   })

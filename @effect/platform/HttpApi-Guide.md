@@ -908,7 +908,7 @@ const ProcessingServiceLive = Layer.succeed(ProcessingService, {
     }
     
     // Start async processing (simulate)
-    Effect.fork(
+    Effect.runPromise(Effect.fork(
       Effect.gen(function* () {
         yield* Effect.sleep("1 second")
         // Simulate processing completion
@@ -918,7 +918,7 @@ const ProcessingServiceLive = Layer.succeed(ProcessingService, {
         }
         // In real implementation, update job status in database
       })
-    ).pipe(Effect.runPromise)
+    ))
     
     return job
   }),

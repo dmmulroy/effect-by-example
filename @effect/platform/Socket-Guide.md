@@ -689,7 +689,7 @@ class MessageBus extends Effect.Service<MessageBus>()("MessageBus", {
         yield* Effect.logInfo(`Service registered: ${serviceId}`)
         
         // Start heartbeat monitoring
-        yield* monitorHeartbeat(serviceId).pipe(Effect.forkDaemon)
+        yield* Effect.forkDaemon(monitorHeartbeat(serviceId))
       })
     
     const unregisterService = (serviceId: string) =>
@@ -884,7 +884,7 @@ const createServiceClient = (busHost: string, busPort: number, serviceId: string
         yield* Channel.writeChunk(channel, Chunk.of(heartbeat))
       }),
       Schedule.fixed("30 seconds")
-    ).pipe(Effect.forkDaemon)
+    ), Effect.forkDaemon)
     
     const sendMessage = (to: string, type: string, payload: unknown) =>
       Effect.gen(function* () {
@@ -913,7 +913,7 @@ const createServiceClient = (busHost: string, busPort: number, serviceId: string
 // Usage
 const program = Effect.gen(function* () {
   // Start message bus server
-  yield* createMessageBusServer(9090).pipe(Effect.forkDaemon)
+  yield* Effect.forkDaemon(createMessageBusServer(9090))
   
   yield* Effect.sleep("1 second")
   
@@ -1357,7 +1357,7 @@ const createRequestResponseClient = (socket: Socket.Socket) =>
           }
         }
       })
-    ).pipe(Effect.forkDaemon)
+    ), Effect.forkDaemon)
     
     const sendRequest = <T>(data: unknown, timeout = Duration.seconds(30)) =>
       Effect.gen(function* () {
@@ -1412,7 +1412,7 @@ const createRequestResponseClient = (socket: Socket.Socket) =>
         )
       }),
       Schedule.fixed("10 seconds")
-    ).pipe(Effect.forkDaemon)
+    ), Effect.forkDaemon)
     
     return { sendRequest } as const
   })
@@ -1897,7 +1897,7 @@ const testRealSocketConnection = Effect.gen(function* () {
   const testPort = 9999
   
   // Start test server
-  const server = yield* createTestServer(testPort).pipe(Effect.forkDaemon)
+  const server = yield* Effect.forkDaemon(createTestServer(testPort))
   
   yield* Effect.sleep("100 millis") // Let server start
   
@@ -1945,7 +1945,7 @@ const createTestServer = (port: number) =>
             })
           )
         )
-      }).pipe(Effect.scoped)
+      }), Effect.scoped)
     )
   })
 ```

@@ -873,19 +873,13 @@ const validateEnum = Fn.curry(<T extends string>(
 // Configuration parsers
 const parseDatabaseConfig = (env: EnvVars): DatabaseConfig => ({
   host: validateRequired("DB_HOST", env.DB_HOST),
-  port: pipe(
-    validateRange(1024, 65535)(parseNumber(env.DB_PORT, 5432))
-  ),
+  port: validateRange(1024, 65535)(parseNumber(env.DB_PORT, 5432)),
   database: validateRequired("DB_NAME", env.DB_NAME),
   username: validateRequired("DB_USER", env.DB_USER),
   password: validateRequired("DB_PASS", env.DB_PASS),
   ssl: parseBoolean(env.DB_SSL, false),
-  poolSize: pipe(
-    validateRange(1, 100)(parseNumber(env.DB_POOL_SIZE, 10))
-  ),
-  timeout: pipe(
-    validateRange(1000, 300000)(parseNumber(env.DB_TIMEOUT, 30000))
-  )
+  poolSize: validateRange(1, 100)(parseNumber(env.DB_POOL_SIZE, 10)),
+  timeout: validateRange(1000, 300000)(parseNumber(env.DB_TIMEOUT, 30000))
 })
 
 const parseServerConfig = (env: EnvVars): ServerConfig => ({
@@ -900,11 +894,8 @@ const parseServerConfig = (env: EnvVars): ServerConfig => ({
   compression: parseBoolean(env.ENABLE_COMPRESSION, true),
   rateLimiting: {
     enabled: parseBoolean(env.RATE_LIMITING_ENABLED, true),
-    maxRequests: pipe(
-      validateRange(1, 10000)(parseNumber(env.RATE_LIMIT_MAX, 100))
-    ),
-    windowMs: pipe(
-      validateRange(1000, 3600000)(parseNumber(env.RATE_LIMIT_WINDOW, 60000))
+    maxRequests: validateRange(1, 10000)(parseNumber(env.RATE_LIMIT_MAX, 100)),
+    windowMs: validateRange(1000, 3600000)(parseNumber(env.RATE_LIMIT_WINDOW, 60000))
     )
   }
 })

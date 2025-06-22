@@ -89,16 +89,14 @@ import { pipe } from "effect"
 const createUserCache = () => {
   const empty = HashMap.empty<string, User>()
   
-  const withUsers = pipe(
-    empty,
+  const withUsers = empty.pipe(
     HashMap.set('1', { id: '1', name: 'Alice', email: 'alice@example.com' }),
     HashMap.set('2', { id: '2', name: 'Bob', email: 'bob@example.com' }),
     HashMap.set('3', { id: '3', name: 'Charlie', email: 'charlie@example.com' })
   )
   
   // Structural sharing - minimal memory overhead
-  const updated = pipe(
-    withUsers,
+  const updated = withUsers.pipe(
     HashMap.modify('1', user => ({ ...user, name: 'Alice Smith' }))
   )
   
@@ -113,8 +111,7 @@ const processBatchUpdates = (
   updates: Array<{ id: string; changes: Partial<User> }>
 ): HashMap.HashMap<string, User> =>
   updates.reduce(
-    (acc, { id, changes }) => pipe(
-      acc,
+    (acc, { id, changes }) => acc.pipe(
       HashMap.modifyOption(id, user => ({ ...user, ...changes }))
     ),
     users
@@ -188,20 +185,17 @@ const hasRed = HashMap.has(colors, 'red')     // true
 const hasYellow = HashMap.has(colors, 'yellow') // false
 
 // Setting values
-const withYellow = pipe(
-  colors,
+const withYellow = colors.pipe(
   HashMap.set('yellow', '#FFFF00')
 )
 
 // Modifying existing values
-const brighterRed = pipe(
-  colors,
+const brighterRed = colors.pipe(
   HashMap.modify('red', color => color.toUpperCase())
 )
 
 // Safe modification (only if key exists)
-const maybeModified = pipe(
-  colors,
+const maybeModified = colors.pipe(
   HashMap.modifyOption('purple', color => color.toUpperCase()) // No change
 )
 
@@ -226,32 +220,27 @@ const numbers = HashMap.make(
 )
 
 // Map over values
-const doubled = pipe(
-  numbers,
+const doubled = numbers.pipe(
   HashMap.map(n => n * 2)
 )
 
 // Map over both keys and values
-const keyValuePairs = pipe(
-  numbers,
+const keyValuePairs = numbers.pipe(
   HashMap.mapWithIndex((value, key) => `${key}: ${value}`)
 )
 
 // Filter by predicate
-const evens = pipe(
-  numbers,
+const evens = numbers.pipe(
   HashMap.filter(n => n % 2 === 0)
 )
 
 // Filter by key and value
-const longKeys = pipe(
-  numbers,
+const longKeys = numbers.pipe(
   HashMap.filterWithIndex((value, key) => key.length > 3)
 )
 
 // Reduce to single value
-const sum = pipe(
-  numbers,
+const sum = numbers.pipe(
   HashMap.reduce(0, (acc, value) => acc + value)
 )
 
@@ -667,8 +656,7 @@ class TTLCache<K, V> {
       const cache = yield* Ref.get(this.data))
       let removedCount = 0
 
-      const cleaned = pipe(
-        cache,
+      const cleaned = cache.pipe(
         HashMap.filter(entry => {
           const isExpired = now > entry.timestamp + entry.ttl
           if (isExpired) removedCount++
@@ -838,8 +826,7 @@ class Graph<T> {
   // Add a node to the graph
   addNode(node: T): Graph<T> {
     const newGraph = new Graph<T>()
-    newGraph.adjacencyList = pipe(
-      this.adjacencyList,
+    newGraph.adjacencyList = this.adjacencyList.pipe(
       HashMap.set(node, HashSet.empty())
     )
     newGraph.edgeWeights = this.edgeWeights
@@ -866,8 +853,7 @@ class Graph<T> {
     }
     
     // Add edge to adjacency list
-    const fromNeighbors = pipe(
-      HashMap.get(adjacencyList, from),
+    const fromNeighbors = HashMap.get(adjacencyList, from).pipe(
       Option.getOrElse(() => HashSet.empty<T>()),
       HashSet.add(to)
     )
@@ -1055,8 +1041,7 @@ class Graph<T> {
       for (const neighbor of HashSet.values(neighbors)) {
         if (!unvisited.has(neighbor)) continue
         
-        const edgeWeight = pipe(
-          this.getEdgeWeight(current, neighbor),
+        const edgeWeight = this.getEdgeWeight(current, neighbor).pipe(
           Option.getOrElse(() => 1)
         )
         
@@ -1075,8 +1060,7 @@ class Graph<T> {
   // Get graph statistics
   getStats(): GraphStats {
     const nodeCount = HashSet.size(this.nodeSet)
-    const edgeCount = pipe(
-      this.adjacencyList,
+    const edgeCount = this.adjacencyList.pipe(
       HashMap.values,
       values => values.reduce((sum, neighbors) => sum + HashSet.size(neighbors), 0)
     )
@@ -1118,8 +1102,7 @@ class Graph<T> {
     
     for (const node of HashSet.values(nodes)) {
       const neighbors = this.getNeighbors(node)
-      const filteredNeighbors = pipe(
-        neighbors,
+      const filteredNeighbors = neighbors.pipe(
         HashSet.filter(neighbor => HashSet.has(nodes, neighbor))
       )
       
@@ -1313,8 +1296,7 @@ const processLargeDataset = (
       )
       
       // Merge batches efficiently
-      result = pipe(
-        result,
+      result = result.pipe(
         HashMap.union(batchMap)
       )
       
@@ -1350,8 +1332,7 @@ const setOperations = () => {
   // Result: { a: 1, b: 20, c: 30, d: 40 }
   
   // Custom union with value combining
-  const customUnion = pipe(
-    HashMap.entries(map1),
+  const customUnion = HashMap.entries(map1).pipe(
     entries => entries.reduce((acc, [key, value]) => {
       const existing = HashMap.get(map2, key)
       const newValue = Option.isSome(existing) 
@@ -1363,15 +1344,13 @@ const setOperations = () => {
   // Result: { a: 1, b: 22, c: 33, d: 40 }
   
   // Intersection - only keys present in both
-  const intersection = pipe(
-    map1,
+  const intersection = map1.pipe(
     HashMap.filter((_, key) => HashMap.has(map2, key))
   )
   // Result: { b: 2, c: 3 }
   
   // Difference - keys in map1 but not in map2
-  const difference = pipe(
-    map1,
+  const difference = map1.pipe(
     HashMap.filter((_, key) => !HashMap.has(map2, key))
   )
   // Result: { a: 1 }
@@ -1390,8 +1369,7 @@ const advancedFiltering = () => {
   )
   
   // Filter by multiple conditions
-  const availableElectronics = pipe(
-    products,
+  const availableElectronics = products.pipe(
     HashMap.filter(product => 
       product.category === 'electronics' && 
       product.inStock && 
@@ -1403,11 +1381,9 @@ const advancedFiltering = () => {
   const groupByCategory = (
     products: HashMap.HashMap<string, { category: string; price: number; inStock: boolean }>
   ): HashMap.HashMap<string, Array<string>> => {
-    return pipe(
-      HashMap.entries(products),
+    return HashMap.entries(products).pipe(
       entries => entries.reduce((acc, [name, product]) => {
-        const existing = pipe(
-          HashMap.get(acc, product.category),
+        const existing = HashMap.get(acc, product.category).pipe(
           Option.getOrElse(() => [] as string[])
         )
         return HashMap.set(acc, product.category, [...existing, name])
@@ -1418,8 +1394,7 @@ const advancedFiltering = () => {
   const grouped = groupByCategory(products)
   
   // Calculate statistics per category
-  const categoryStats = pipe(
-    grouped,
+  const categoryStats = grouped.pipe(
     HashMap.mapWithIndex((productNames, category) => {
       const categoryProducts = productNames
         .map(name => HashMap.unsafeGet(products, name))
@@ -1486,11 +1461,9 @@ const nestedHashMapOperations = () => {
     role: string,
     employee: Employee
   ): OrganizationData => {
-    return pipe(
-      org,
+    return org.pipe(
       HashMap.modify(department, departmentData => {
-        return pipe(
-          departmentData,
+        return departmentData.pipe(
           HashMap.modify(role, employees => [...employees, employee])
         )
       })
@@ -1498,11 +1471,9 @@ const nestedHashMapOperations = () => {
   }
   
   // Calculate total salary by department
-  const departmentSalaries = pipe(
-    organization,
+  const departmentSalaries = organization.pipe(
     HashMap.map(departmentData => {
-      return pipe(
-        departmentData,
+      return departmentData.pipe(
         HashMap.values,
         roles => roles.flat(),
         employees => employees.reduce((sum, emp) => sum + emp.salary, 0)
@@ -1536,8 +1507,7 @@ const nestedHashMapOperations = () => {
     for (const [deptName, dept] of HashMap.entries(org)) {
       for (const [roleName, employees] of HashMap.entries(dept)) {
         for (const employee of employees) {
-          result = pipe(
-            result,
+          result = result.pipe(
             HashMap.set(employee.id, { ...employee, department: deptName, role: roleName })
           )
         }
@@ -1585,11 +1555,9 @@ const mergeAndAggregation = () => {
     maps: HashMap.HashMap<string, number>[]
   ): HashMap.HashMap<string, number> => {
     return maps.reduce((acc, current) => {
-      return pipe(
-        HashMap.entries(current),
+      return HashMap.entries(current).pipe(
         entries => entries.reduce((result, [key, value]) => {
-          const existing = pipe(
-            HashMap.get(result, key),
+          const existing = HashMap.get(result, key).pipe(
             Option.getOrElse(() => 0)
           )
           return HashMap.set(result, key, existing + value)
@@ -1601,8 +1569,7 @@ const mergeAndAggregation = () => {
   const totalSales = mergeWithSum([salesQ1, salesQ2, salesQ3])
   
   // Calculate quarterly performance
-  const quarterlyPerformance = pipe(
-    HashMap.keys(totalSales),
+  const quarterlyPerformance = HashMap.keys(totalSales).pipe(
     keys => keys.map(salesperson => {
       const q1 = Option.getOrElse(HashMap.get(salesQ1, salesperson), () => 0)
       const q2 = Option.getOrElse(HashMap.get(salesQ2, salesperson), () => 0)
@@ -1863,8 +1830,7 @@ class StateManager {
       let removedCount = 0
 
       yield* Ref.update(this.state, currentState => {
-        const validSessions = pipe(
-          currentState.sessions,
+        const validSessions = currentState.sessions.pipe(
           HashMap.filter(session => {
             const isValid = session.expiresAt > now
             if (!isValid) removedCount++
@@ -1939,8 +1905,7 @@ class MemoizationCache<K, V> {
       const now = Date.now()
       
       yield* Ref.update(this.cache, cache => {
-        let updated = pipe(
-          cache,
+        let updated = cache.pipe(
           HashMap.set(key, { value, computedAt: now, hitCount: 0 })
         )
 
@@ -2321,8 +2286,7 @@ const streamProcessingWithHashMap = () =>
     const userEventCounts = yield* 
       events.pipe(
         Stream.scan(HashMap.empty<string, number>(), (acc, event) => {
-          const currentCount = pipe(
-            HashMap.get(acc, event.userId),
+          const currentCount = HashMap.get(acc, event.userId).pipe(
             Option.getOrElse(() => 0)
           )
           return HashMap.set(acc, event.userId, currentCount + 1)
@@ -2353,8 +2317,7 @@ const queueBasedProcessing = () =>
     const consumer = Effect.gen(function* () {
       while (true) {
         const item = yield* Queue.take(queue))
-        const existing = pipe(
-          HashMap.get(hashMap, item.key),
+        const existing = HashMap.get(hashMap, item.key).pipe(
           Option.getOrElse(() => 0)
         )
         hashMap = HashMap.set(hashMap, item.key, existing + item.value)
@@ -2387,8 +2350,7 @@ const scheduledHashMapOperations = () =>
         const now = Date.now()
         const initialSize = HashMap.size(cache)
         
-        cache = pipe(
-          cache,
+        cache = cache.pipe(
           HashMap.filter(entry => (now - entry.timestamp) < maxAge)
         )
         
@@ -2560,12 +2522,10 @@ const databaseIntegration = () => {
         // Update indexes
         this.indexes.byEmail = HashMap.set(this.indexes.byEmail, user.email, user.id)
         
-        const nameIds = pipe(
-          HashMap.get(this.indexes.byName, user.name),
+        const nameIds = HashMap.get(this.indexes.byName, user.name).pipe(
           Option.getOrElse(() => [] as string[])
         )
-        this.indexes.byName = pipe(
-          this.indexes.byName,
+        this.indexes.byName = this.indexes.byName.pipe(
           HashMap.set(user.name, [...nameIds, user.id])
         )
 
@@ -2593,8 +2553,7 @@ const databaseIntegration = () => {
     // Find by name using index
     findByName(name: string): Effect.Effect<User[]> {
       return Effect.gen(function* () {
-        const userIds = pipe(
-          HashMap.get(this.indexes.byName, name),
+        const userIds = HashMap.get(this.indexes.byName, name).pipe(
           Option.getOrElse(() => [] as string[])
         )
 
@@ -2636,8 +2595,7 @@ const databaseIntegration = () => {
 
         if (updates.name && updates.name !== oldUser.name) {
           // Remove from old name index
-          const oldNameIds = pipe(
-            HashMap.get(this.indexes.byName, oldUser.name),
+          const oldNameIds = HashMap.get(this.indexes.byName, oldUser.name).pipe(
             Option.getOrElse(() => [] as string[])
           ).filter(userId => userId !== id)
           
@@ -2648,12 +2606,10 @@ const databaseIntegration = () => {
           }
 
           // Add to new name index
-          const newNameIds = pipe(
-            HashMap.get(this.indexes.byName, updates.name),
+          const newNameIds = HashMap.get(this.indexes.byName, updates.name).pipe(
             Option.getOrElse(() => [] as string[])
           )
-          this.indexes.byName = pipe(
-            this.indexes.byName,
+          this.indexes.byName = this.indexes.byName.pipe(
             HashMap.set(updates.name, [...newNameIds, id])
           )
         }
@@ -2955,8 +2911,7 @@ const runHashMapTestSuite = () => {
     ['user2', { name: 'Bob', age: 25 }]
   )
   
-  const filteredMap = pipe(
-    testMap,
+  const filteredMap = testMap.pipe(
     HashMap.filter(user => user.age < 35)
   )
   
@@ -2970,8 +2925,7 @@ const runHashMapTestSuite = () => {
   
   // Performance tests
   console.log('\n--- Performance Tests ---')
-  const largeMap = pipe(
-    HashMap.empty<number, string>(),
+  const largeMap = HashMap.empty<number, string>().pipe(
     map => {
       let result = map
       for (let i = 0; i < 10000; i++) {

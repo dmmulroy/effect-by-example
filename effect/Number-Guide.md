@@ -55,8 +55,9 @@ import { Number, Option, Effect } from "effect"
 
 // Type-safe operations with automatic error handling
 const calculatePercentage = (value: number, total: number): Option.Option<number> =>
-  Number.divide(value, total).pipe(
-    Option.map(ratio => Number.multiply(ratio, 100))
+  Option.map(
+    Number.divide(value, total),
+    ratio => Number.multiply(ratio, 100)
   )
 
 // Composable range validation
@@ -180,21 +181,18 @@ interface PriceBreakdown {
 
 // Helper for safe percentage calculations
 const calculatePercentage = (value: number, percentage: number): Option.Option<number> =>
-  Number.divide(percentage, 100).pipe(
-    Option.map(rate => Number.multiply(value, rate))
+  Option.map(
+    Number.divide(percentage, 100),
+    rate => Number.multiply(value, rate)
   )
 
 // Calculate discount amount
 const calculateDiscount = (basePrice: number, discountPercentage: number): number =>
-  calculatePercentage(basePrice, discountPercentage).pipe(
-    Option.getOrElse(() => 0)
-  )
+  Option.getOrElse(calculatePercentage(basePrice, discountPercentage), () => 0)
 
 // Calculate tax on a given amount
 const calculateTax = (amount: number, taxRate: number): number =>
-  calculatePercentage(amount, taxRate).pipe(
-    Option.getOrElse(() => 0)
-  )
+  Option.getOrElse(calculatePercentage(amount, taxRate), () => 0)
 
 // Main price calculation function
 export const calculatePrice = (product: Product): Effect.Effect<PriceBreakdown, PriceCalculationError> =>
@@ -277,7 +275,7 @@ const calculateMedian = (sortedValues: ReadonlyArray<number>): number => {
   
   if (length % 2 === 0) {
     const sum = Number.sum(sortedValues[middle - 1], sortedValues[middle])
-    return Number.divide(sum, 2).pipe(Option.getOrElse(() => 0))
+    return Option.getOrElse(Number.divide(sum, 2), () => 0)
   }
   
   return sortedValues[middle]
@@ -319,9 +317,7 @@ export const analyzeSensorData = (readings: ReadonlyArray<SensorReading>): Effec
     // Calculate basic statistics
     const count = values.length
     const sum = Number.sumAll(values)
-    const mean = Number.divide(sum, count).pipe(
-      Option.getOrElse(() => 0)
-    )
+    const mean = Option.getOrElse(Number.divide(sum, count), () => 0)
 
     // Find min and max
     const min = values.reduce(Number.min)
@@ -533,8 +529,9 @@ const aggregateTransactions = (transactions: ReadonlyArray<{ amount: number, typ
   const totalExpenses = Number.sumAll(expenses)
   const transactionCount = transactions.length
   
-  const averageAmount = Number.divide(Number.sum(totalRevenue, totalExpenses), transactionCount).pipe(
-    Option.getOrElse(() => 0)
+  const averageAmount = Option.getOrElse(
+    Number.divide(Number.sum(totalRevenue, totalExpenses), transactionCount),
+    () => 0
   )
   
   return {
@@ -626,19 +623,17 @@ const calculateConversionRate = (
   conversions: number,
   totalViews: number
 ): RateCalculationResult =>
-  Number.divide(conversions, totalViews).pipe(
-    Option.match({
-      onNone: () => ({
-        rate: 0,
-        isValid: false,
-        error: "Cannot calculate rate: division by zero"
-      }),
-      onSome: (rate) => ({
-        rate: Number.round(rate * 10000) / 100, // Convert to percentage with 2 decimals
-        isValid: true
-      })
+  Option.match(Number.divide(conversions, totalViews), {
+    onNone: () => ({
+      rate: 0,
+      isValid: false,
+      error: "Cannot calculate rate: division by zero"
+    }),
+    onSome: (rate) => ({
+      rate: Number.round(rate * 10000) / 100, // Convert to percentage with 2 decimals
+      isValid: true
     })
-  )
+  })
 
 // Batch rate calculations with error recovery
 const calculateBatchRates = (
@@ -678,11 +673,12 @@ const calculateCompoundInterest = (
     }
     
     // Calculate rate per period
-    const ratePerPeriod = yield* Number.divide(annualRate, compoundingFrequency).pipe(
-      Option.match({
+    const ratePerPeriod = yield* Option.match(
+      Number.divide(annualRate, compoundingFrequency),
+      {
         onNone: () => Effect.fail(new Error("Invalid compounding frequency")),
         onSome: Effect.succeed
-      })
+      }
     )
     
     // Calculate number of periods
@@ -767,12 +763,10 @@ const sortProductsByValue = (products: ReadonlyArray<Product>): ReadonlyArray<Pr
     const valueA = Number.divide(a.rating, Math.log(a.price + 1))
     const valueB = Number.divide(b.rating, Math.log(b.price + 1))
     
-    return Option.all([valueA, valueB]).pipe(
-      Option.match({
-        onNone: () => 0,
-        onSome: ([vA, vB]) => Number.sign(Number.subtract(vB, vA))
-      })
-    )
+    return Option.match(Option.all([valueA, valueB]), {
+      onNone: () => 0,
+      onSome: ([vA, vB]) => Number.sign(Number.subtract(vB, vA))
+    })
   })
 ```
 
@@ -811,9 +805,8 @@ const calculatePerformanceScore = (
   const totalScore = Number.sumAll([salesScore, satisfactionScore, teamworkScore, experienceScore])
   const totalWeight = Number.sumAll([weights.sales, weights.satisfaction, weights.teamwork, weights.experience])
   
-  return Number.divide(totalScore, totalWeight).pipe(
-    Option.getOrElse(() => 0),
-    score => Number.clamp({ minimum: 0, maximum: 100 })(score)
+  return Number.clamp({ minimum: 0, maximum: 100 })(
+    Option.getOrElse(Number.divide(totalScore, totalWeight), () => 0)
   )
 }
 
@@ -972,7 +965,7 @@ class FinancialNumber {
     const multiplier = Math.pow(10, precision)
     const rounded = Math.round(Number.multiply(value, multiplier))
     return new FinancialNumber(
-      Number.divide(rounded, multiplier).pipe(Option.getOrElse(() => 0)), 
+      Option.getOrElse(Number.divide(rounded, multiplier), () => 0), 
       precision
     )
   }
@@ -994,15 +987,16 @@ class FinancialNumber {
   
   divide(other: FinancialNumber | number): Option.Option<FinancialNumber> {
     const otherValue = other instanceof FinancialNumber ? other.value : other
-    return Number.divide(this.value, otherValue).pipe(
-      Option.map(result => FinancialNumber.from(result, this.precision))
+    return Option.map(
+      Number.divide(this.value, otherValue),
+      result => FinancialNumber.from(result, this.precision)
     )
   }
   
   percentage(percent: number): FinancialNumber {
-    return Number.divide(percent, 100).pipe(
-      Option.map(rate => this.multiply(rate)),
-      Option.getOrElse(() => FinancialNumber.from(0, this.precision))
+    return Option.getOrElse(
+      Option.map(Number.divide(percent, 100), rate => this.multiply(rate)),
+      () => FinancialNumber.from(0, this.precision)
     )
   }
   
@@ -1100,19 +1094,15 @@ const Statistics = {
   },
   
   variance: (values: ReadonlyArray<number>): Option.Option<number> =>
-    Statistics.mean(values).pipe(
-      Option.flatMap(mean => {
-        const squaredDifferences = values.map(value => 
-          Number.multiply(Number.subtract(value, mean), Number.subtract(value, mean))
-        )
-        return Statistics.mean(squaredDifferences)
-      })
-    ),
+    Option.flatMap(Statistics.mean(values), mean => {
+      const squaredDifferences = values.map(value => 
+        Number.multiply(Number.subtract(value, mean), Number.subtract(value, mean))
+      )
+      return Statistics.mean(squaredDifferences)
+    }),
   
   standardDeviation: (values: ReadonlyArray<number>): Option.Option<number> =>
-    Statistics.variance(values).pipe(
-      Option.map(Math.sqrt)
-    ),
+    Option.map(Statistics.variance(values), Math.sqrt),
   
   // Percentiles
   percentile: (values: ReadonlyArray<number>, p: number): Option.Option<number> => {
@@ -1121,10 +1111,11 @@ const Statistics = {
     }
     
     const sorted = Arr.sort(values, Number.Order)
-    const index = Number.divide(p, 100).pipe(
-      Option.getOrElse(() => 0),
-      rate => Number.multiply(rate, Number.subtract(sorted.length, 1)),
-      Math.floor
+    const index = Math.floor(
+      Number.multiply(
+        Option.getOrElse(Number.divide(p, 100), () => 0),
+        Number.subtract(sorted.length, 1)
+      )
     )
     
     return Option.some(sorted[Number.clamp({ minimum: 0, maximum: sorted.length - 1 })(index)])
@@ -1147,15 +1138,17 @@ const Statistics = {
       }
       
       const cubedDeviations = values.map(value => {
-        const deviation = Number.divide(Number.subtract(value, mean), stdDev).pipe(
-          Option.getOrElse(() => 0)
+        const deviation = Option.getOrElse(
+          Number.divide(Number.subtract(value, mean), stdDev),
+          () => 0
         )
         return Math.pow(deviation, 3)
       })
       
       const n = values.length
-      const skew = Number.divide(Number.sumAll(cubedDeviations), n).pipe(
-        Option.getOrElse(() => 0)
+      const skew = Option.getOrElse(
+        Number.divide(Number.sumAll(cubedDeviations), n),
+        () => 0
       )
       
       return yield* Option.some(skew)
@@ -1181,10 +1174,10 @@ const monthlySales = [12500, 13200, 11800, 14500, 13900, 12200, 15100, 14800, 13
 
 const salesAnalysis = Statistics.summary(monthlySales)
 console.log("Sales Analysis:", {
-  averageSales: salesAnalysis.mean.pipe(Option.getOrElse(() => 0)),
-  medianSales: salesAnalysis.median.pipe(Option.getOrElse(() => 0)),
-  salesRange: salesAnalysis.range.pipe(Option.getOrElse(() => 0)),
-  standardDeviation: salesAnalysis.standardDeviation.pipe(Option.getOrElse(() => 0))
+  averageSales: Option.getOrElse(salesAnalysis.mean, () => 0),
+  medianSales: Option.getOrElse(salesAnalysis.median, () => 0),
+  salesRange: Option.getOrElse(salesAnalysis.range, () => 0),
+  standardDeviation: Option.getOrElse(salesAnalysis.standardDeviation, () => 0)
 })
 ```
 
@@ -1295,18 +1288,21 @@ const processTemperatureStream = (temperatureStream: Stream.Stream<number>) =>
     Stream.filter(Number.between({ minimum: -50, maximum: 100 })), // Filter realistic temperatures
     Stream.map(temp => ({
       celsius: temp,
-      fahrenheit: Number.multiply(temp, 9).pipe(
-        result => Number.divide(result, 5),
-        Option.map(result => Number.sum(result, 32)),
-        Option.getOrElse(() => 0)
+      fahrenheit: Option.getOrElse(
+        Option.map(
+          Number.divide(Number.multiply(temp, 9), 5),
+          result => Number.sum(result, 32)
+        ),
+        () => 0
       ),
       kelvin: Number.sum(temp, 273.15)
     })),
     Stream.sliding(5), // Moving window of 5 readings
     Stream.map(window => ({
       readings: window,
-      average: Number.divide(Number.sumAll(window.map(r => r.celsius)), window.length).pipe(
-        Option.getOrElse(() => 0)
+      average: Option.getOrElse(
+        Number.divide(Number.sumAll(window.map(r => r.celsius)), window.length),
+        () => 0
       ),
       max: window.reduce((max, reading) => Number.max(max.celsius, reading.celsius)),
       min: window.reduce((min, reading) => Number.min(min.celsius, reading.celsius))
@@ -1325,8 +1321,9 @@ const processStockPriceStream = (priceStream: Stream.Stream<{ symbol: string, pr
         Stream.map(prices => ({
           symbol,
           currentPrice: prices[prices.length - 1],
-          movingAverage: Number.divide(Number.sumAll(prices), prices.length).pipe(
-            Option.getOrElse(() => 0)
+          movingAverage: Option.getOrElse(
+            Number.divide(Number.sumAll(prices), prices.length),
+            () => 0
           ),
           volatility: calculateVolatility(prices),
           trend: calculateTrend(prices)
@@ -1341,21 +1338,23 @@ const calculateVolatility = (prices: ReadonlyArray<number>): number => {
   if (prices.length < 2) return 0
   
   const returns = prices.slice(1).map((price, index) =>
-    Number.divide(price, prices[index]).pipe(
-      Option.map(ratio => Number.subtract(ratio, 1)),
-      Option.getOrElse(() => 0)
+    Option.getOrElse(
+      Option.map(Number.divide(price, prices[index]), ratio => Number.subtract(ratio, 1)),
+      () => 0
     )
   )
   
-  const meanReturn = Number.divide(Number.sumAll(returns), returns.length).pipe(
-    Option.getOrElse(() => 0)
+  const meanReturn = Option.getOrElse(
+    Number.divide(Number.sumAll(returns), returns.length),
+    () => 0
   )
   
-  const variance = Number.divide(
-    Number.sumAll(returns.map(ret => Math.pow(Number.subtract(ret, meanReturn), 2))),
-    returns.length
-  ).pipe(
-    Option.getOrElse(() => 0)
+  const variance = Option.getOrElse(
+    Number.divide(
+      Number.sumAll(returns.map(ret => Math.pow(Number.subtract(ret, meanReturn), 2))),
+      returns.length
+    ),
+    () => 0
   )
   
   return Math.sqrt(variance)
@@ -1440,9 +1439,9 @@ describe("Number Operations", () => {
       const base = yield* PositiveNumberGen
       const percentage = yield* PercentageGen
       
-      const result = Number.divide(percentage, 100).pipe(
-        Option.map(rate => Number.multiply(base, rate)),
-        Option.getOrElse(() => 0)
+      const result = Option.getOrElse(
+        Option.map(Number.divide(percentage, 100), rate => Number.multiply(base, rate)),
+        () => 0
       )
       
       // Verify the percentage calculation

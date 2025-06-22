@@ -538,9 +538,9 @@ const ServiceRegistryLive = Layer.effect(
     
     // Deregister on shutdown
     yield* Effect.addFinalizer(() =>
-      httpClient.put(
+      Effect.orDie(httpClient.put(
         `${config.consulUrl}/v1/agent/service/deregister/${config.serviceName}-${config.servicePort}`
-      ).pipe(Effect.orDie)
+      ))
     )
     
     return ServiceRegistry.of({ register, discover })
@@ -1214,10 +1214,10 @@ const createResourcePool = <T>(
       
       // Cleanup on shutdown
       yield* Effect.addFinalizer(() =>
-        Effect.all([
+        Effect.orDie(Effect.all([
           ...pool.pool.map(destroy),
           ...Array.from(pool.inUse).map(destroy)
-        ]).pipe(Effect.orDie)
+        ]))
       )
       
       return pool
@@ -1243,7 +1243,7 @@ const ServiceOrchestratorLive = Layer.effect(
       startService: (name, service) =>
         Effect.gen(function* () {
           // Stop existing if running
-          yield* stopService(name).pipe(Effect.ignore)
+          yield* Effect.ignore(stopService(name))
           
           // Start new fiber
           const fiber = yield* service.pipe(

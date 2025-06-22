@@ -1147,7 +1147,7 @@ const makeDownloadManager = Effect.gen(function* () {
         const now = Date.now()
         const lastUpdate = yield* lastSpeedUpdate.get
         if (now - lastUpdate >= 1000) {
-          const bytes = yield* state.get.pipe(Effect.map(s => s.bytesDownloaded))
+          const bytes = yield* Effect.map(state.get, s => s.bytesDownloaded)
           const lastBytesValue = yield* lastBytes.get
           const speed = (bytes - lastBytesValue) / ((now - lastUpdate) / 1000)
           
@@ -1192,7 +1192,7 @@ const makeDownloadManager = Effect.gen(function* () {
   
   return {
     download: (url: string, destination: string) => Effect.gen(function* () {
-      const fiber = yield* download(url, destination).pipe(Effect.fork)
+      const fiber = yield* Effect.fork(download(url, destination))
       yield* currentDownload.set(fiber)
       yield* Fiber.join(fiber)
     }),
@@ -1276,7 +1276,7 @@ const downloadLargeFile = Effect.gen(function* () {
   const downloadFiber = yield* manager.download(
     "https://example.com/large-file.zip",
     "/tmp/large-file.zip"
-  ).pipe(Effect.fork)
+  ), Effect.fork)
   
   // Monitor progress
   const monitorFiber = yield* Effect.repeat(
@@ -1294,7 +1294,7 @@ const downloadLargeFile = Effect.gen(function* () {
       )
     ),
     Schedule.fixed(Duration.seconds(1))
-  ).pipe(Effect.fork)
+  ), Effect.fork)
   
   // Simulate pause after 5 seconds
   yield* Effect.sleep(Duration.seconds(5))
@@ -1479,7 +1479,7 @@ const makeApiClientFactory = <ServiceName extends string>(
     layer: Layer.effect(
       Context.GenericTag<ReturnType<typeof makeClient>>(`${serviceName}Client`),
       makeClient
-    ).pipe(Layer.provide(ServiceConfigLive))
+    ), Layer.provide(ServiceConfigLive))
   }
 }
 
@@ -1688,7 +1688,7 @@ const makeOAuthClient = Effect.gen(function* () {
       while: (error) => {
         // Retry on 401 with token refresh
         if (HttpClientError.isHttpClientError(error) && error.response.status === 401) {
-          return refresh.pipe(Effect.as(true), Effect.orElse(() => Effect.succeed(false)))
+          return Effect.orElse(Effect.as(refresh, true), () => Effect.succeed(false))
         }
         return Effect.succeed(false)
       },
@@ -2022,7 +2022,7 @@ describe("UserService", () => {
       )
       
       expect(Exit.isFailure(result)).toBe(true)
-    }).pipe(Effect.runPromise)
+    }), Effect.runPromise)
   )
 })
 

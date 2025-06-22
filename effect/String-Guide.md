@@ -533,7 +533,7 @@ const parseConfigFile = (content: string) => Effect.gen(function* () {
       continue // Skip invalid lines
     }
     
-    const key = String.slice(line, 0, equalIndex).pipe(String.trim)
+    const key = String.trim(String.slice(line, 0, equalIndex))
     const value = String.slice(line, equalIndex + 1).pipe(
       String.trim,
       String.trimStart,
@@ -593,7 +593,7 @@ import { String } from "effect"
 
 // Unicode normalization for consistent text processing
 const normalizeText = (input: string) => 
-  String.normalize(input).pipe(String.trim)
+  String.trim(String.normalize(input))
 
 // Example with different Unicode forms
 const text1 = "café" // é as single character
@@ -1175,7 +1175,7 @@ const createContentProcessor = (baseUrl: string) => {
                 (s) => String.replace(s, /\n\s*\n\s*\n/g, '\n\n')
               )
             case 'html':
-              return String.replace(content, />\s+</g, '><').pipe(String.trim)
+              return String.trim(String.replace(content, />\s+</g, '><'))
             default:
               return String.trim(content)
           }
@@ -1268,8 +1268,8 @@ describe('String transformations', () => {
       
       for (const input of testStrings) {
         // Test case conversion round-trips
-        const upperLower = String.toUpperCase(input).pipe(String.toLowerCase)
-        const lowerUpper = String.toLowerCase(input).pipe(String.toUpperCase)
+        const upperLower = String.toLowerCase(String.toUpperCase(input))
+        const lowerUpper = String.toUpperCase(String.toLowerCase(input))
         
         // Verify normalization is idempotent
         const normalized1 = String.normalize(input)

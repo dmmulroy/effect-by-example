@@ -56,7 +56,7 @@ const fileLogger = Logger.structuredLogger.pipe(
 const LoggerLive = Logger.replaceScoped(
   Logger.defaultLogger,
   fileLogger
-).pipe(Layer.provide(NodeFileSystem.layer))
+), Layer.provide(NodeFileSystem.layer))
 
 const processOrder = (order: Order) => Effect.gen(function* () {
   yield* Effect.log("Processing order", { orderId: order.id, userId: order.userId })
@@ -101,7 +101,7 @@ const fileLogger = Logger.stringLogger.pipe(
 const LoggerLive = Logger.replaceScoped(
   Logger.defaultLogger,
   fileLogger
-).pipe(Layer.provide(NodeFileSystem.layer))
+), Layer.provide(NodeFileSystem.layer))
 
 const program = Effect.gen(function* () {
   yield* Effect.log("Application started")
@@ -109,7 +109,7 @@ const program = Effect.gen(function* () {
   yield* Effect.log("Application finished")
 })
 
-Effect.runFork(program.pipe(Effect.provide(LoggerLive)))
+Effect.runFork(Effect.provide(program, LoggerLive))
 ```
 
 ### Pattern 2: Structured JSON Logging
@@ -127,7 +127,7 @@ const jsonFileLogger = Logger.jsonLogger.pipe(
 const LoggerLive = Logger.replaceScoped(
   Logger.defaultLogger,
   jsonFileLogger
-).pipe(Layer.provide(NodeFileSystem.layer))
+), Layer.provide(NodeFileSystem.layer))
 
 const program = Effect.gen(function* () {
   yield* Effect.log("User action", { userId: "123", action: "login" })
@@ -157,7 +157,7 @@ const dualLogger = Effect.map(fileLogger, (fileLogger) =>
 const LoggerLive = Logger.replaceScoped(
   Logger.defaultLogger,
   dualLogger
-).pipe(Layer.provide(NodeFileSystem.layer))
+), Layer.provide(NodeFileSystem.layer))
 
 const program = Effect.gen(function* () {
   yield* Effect.log("Server starting on port 3000")
@@ -191,7 +191,7 @@ const requestLogger = Logger.structuredLogger.pipe(
 const RequestLoggerLive = Logger.replaceScoped(
   Logger.defaultLogger,
   requestLogger
-).pipe(Layer.provide(NodeFileSystem.layer))
+), Layer.provide(NodeFileSystem.layer))
 
 // HTTP middleware for request logging
 const logRequest = (request: HttpRequest) => Effect.gen(function* () {
@@ -246,7 +246,7 @@ const server = Effect.gen(function* () {
   
   yield* Effect.log("Server started", { port: 3000 })
   return httpServer
-}).pipe(Effect.provide(RequestLoggerLive))
+}), Effect.provide(RequestLoggerLive))
 ```
 
 ### Example 2: Background Job Processing with Error Tracking
@@ -271,7 +271,7 @@ const LoggerLive = Logger.replaceScoped(
     Effect.all([jobLogger, errorLogger]),
     ([jobLogger, errorLogger]) => Logger.zip(jobLogger, errorLogger)
   )
-).pipe(Layer.provide(NodeFileSystem.layer))
+), Layer.provide(NodeFileSystem.layer))
 
 interface Job {
   id: string
@@ -345,7 +345,7 @@ const jobProcessor = Effect.gen(function* () {
       })
     })
   )
-}).pipe(Effect.provide(LoggerLive))
+}), Effect.provide(LoggerLive))
 ```
 
 ### Example 3: Multi-Environment Application Logging
@@ -431,7 +431,7 @@ const AppLoggerLive = Layer.unwrapEffect(
     return Logger.replaceScoped(
       Logger.defaultLogger,
       environmentLogger
-    ).pipe(Layer.provide(NodeFileSystem.layer))
+    ), Layer.provide(NodeFileSystem.layer))
   })
 )
 
@@ -476,7 +476,7 @@ const app = Effect.gen(function* () {
   })
   
   yield* Effect.never
-}).pipe(Effect.provide(AppLoggerLive))
+}), Effect.provide(AppLoggerLive))
 ```
 
 ## Advanced Features Deep Dive
@@ -672,12 +672,12 @@ const sanitizeLogEntry = (entry: any): any => {
 ```typescript
 // Centralized logging configuration
 const LoggingConfig = Config.all({
-  level: Config.logLevel("LOG_LEVEL").pipe(Config.withDefault(LogLevel.Info)),
-  directory: Config.string("LOG_DIR").pipe(Config.withDefault("/var/log/app")),
-  maxFileSize: Config.number("LOG_MAX_FILE_SIZE").pipe(Config.withDefault(100 * 1024 * 1024)),
-  batchWindow: Config.duration("LOG_BATCH_WINDOW").pipe(Config.withDefault(Duration.seconds(5))),
-  enableConsole: Config.boolean("LOG_ENABLE_CONSOLE").pipe(Config.withDefault(false)),
-  enableFileRotation: Config.boolean("LOG_ENABLE_ROTATION").pipe(Config.withDefault(true))
+  level: Config.withDefault(Config.logLevel("LOG_LEVEL"), LogLevel.Info),
+  directory: Config.withDefault(Config.string("LOG_DIR"), "/var/log/app"),
+  maxFileSize: Config.withDefault(Config.number("LOG_MAX_FILE_SIZE"), 100 * 1024 * 1024),
+  batchWindow: Config.withDefault(Config.duration("LOG_BATCH_WINDOW"), Duration.seconds(5)),
+  enableConsole: Config.withDefault(Config.boolean("LOG_ENABLE_CONSOLE"), false),
+  enableFileRotation: Config.withDefault(Config.boolean("LOG_ENABLE_ROTATION"), true)
 })
 
 const createConfiguredLogger = Effect.gen(function* () {
@@ -915,7 +915,7 @@ const setupExpressServer = Effect.gen(function* () {
   const LoggerLive = Logger.replaceScoped(
     Logger.defaultLogger,
     fileLogger
-  ).pipe(Layer.provide(NodeFileSystem.layer))
+  ), Layer.provide(NodeFileSystem.layer))
   
   const runtime = yield* Effect.runtime<never>().pipe(
     Effect.provide(LoggerLive)
@@ -975,7 +975,7 @@ const createLoggerRuntime = () => {
   const LoggerLive = Logger.replaceScoped(
     Logger.defaultLogger,
     fileLogger
-  ).pipe(Layer.provide(NodeFileSystem.layer))
+  ), Layer.provide(NodeFileSystem.layer))
   
   return Runtime.make(LoggerLive)
 }
@@ -1068,14 +1068,14 @@ describe("PlatformLogger", () => {
     const LoggerLive = Logger.replaceScoped(
       Logger.defaultLogger,
       testLogger
-    ).pipe(Layer.provide(mockFileSystem))
+    ), Layer.provide(mockFileSystem))
     
     const program = Effect.gen(function* () {
       yield* Effect.log("Test message 1")
       yield* Effect.log("Test message 2")
     })
     
-    await Effect.runPromise(program.pipe(Effect.provide(LoggerLive)))
+    await Effect.runPromise(Effect.provide(program, LoggerLive))
     
     const logContent = mockFiles.get("/test/app.log")
     expect(logContent).toContain("Test message 1")
@@ -1095,13 +1095,13 @@ describe("PlatformLogger", () => {
     const LoggerLive = Logger.replaceScoped(
       Logger.defaultLogger,
       testLogger
-    ).pipe(Layer.provide(mockFileSystem))
+    ), Layer.provide(mockFileSystem))
     
     const program = Effect.log("Test message")
     
     // Should not throw, but log the error
     await expect(
-      Effect.runPromise(program.pipe(Effect.provide(LoggerLive)))
+      Effect.runPromise(Effect.provide(program, LoggerLive))
     ).rejects.toThrow("Disk full")
   })
   
@@ -1129,7 +1129,7 @@ describe("PlatformLogger", () => {
     const LoggerLive = Logger.replaceScoped(
       Logger.defaultLogger,
       batchedLogger
-    ).pipe(Layer.provide(mockFileSystem))
+    ), Layer.provide(mockFileSystem))
     
     const program = Effect.gen(function* () {
       yield* Effect.log("Message 1")
@@ -1138,7 +1138,7 @@ describe("PlatformLogger", () => {
       yield* Effect.sleep(Duration.millis(150)) // Wait for batch to flush
     })
     
-    await Effect.runPromise(program.pipe(Effect.provide(LoggerLive)))
+    await Effect.runPromise(Effect.provide(program, LoggerLive))
     
     expect(writtenBatches).toHaveLength(1)
     expect(writtenBatches[0]).toHaveLength(3)
@@ -1177,7 +1177,7 @@ const createTempLoggerTest = (testName: string) => Effect.gen(function* () {
   })
   
   return { logPath, content }
-}).pipe(Effect.scoped)
+}), Effect.scoped)
 ```
 
 ## Conclusion

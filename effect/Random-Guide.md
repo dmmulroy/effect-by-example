@@ -363,8 +363,9 @@ const generateUser = Effect.gen(function* () {
   
   // Correlated data - older users more likely to be premium
   const premiumProbability = Math.min(0.1 + (age - 18) * 0.01, 0.6)
-  const isPremium = yield* Random.nextRange(0, 1).pipe(
-    Effect.map(n => n < premiumProbability)
+  const isPremium = yield* Effect.map(
+    Random.nextRange(0, 1),
+    n => n < premiumProbability
   )
   
   // Generate email with random provider
@@ -388,8 +389,9 @@ const generateUser = Effect.gen(function* () {
 
 // Generate date in range
 const generateDate = (start: Date, end: Date) =>
-  Random.nextIntBetween(start.getTime(), end.getTime()).pipe(
-    Effect.map(timestamp => new Date(timestamp))
+  Effect.map(
+    Random.nextIntBetween(start.getTime(), end.getTime()),
+    timestamp => new Date(timestamp)
   )
 
 // Generate related data with constraints
@@ -1305,8 +1307,9 @@ const chaosTest = <A, E, R>(
 ) =>
   Effect.gen(function* () {
     // Inject random failures
-    const shouldFail = yield* Random.nextRange(0, 1).pipe(
-      Effect.map(n => n < chaos.failureRate)
+    const shouldFail = yield* Effect.map(
+      Random.nextRange(0, 1),
+      n => n < chaos.failureRate
     )
     
     if (shouldFail) {

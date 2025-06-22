@@ -1561,7 +1561,7 @@ const effectMiddleware = (app: HttpApp.HttpApp<any, any>) => {
         await Effect.runPromise(
           Stream.runForEach(response.body.stream, (chunk) =>
             Effect.sync(() => res.write(chunk))
-          ).pipe(Runtime.provideRuntime(runtime))
+          ), Runtime.provideRuntime(runtime))
         )
         res.end()
       } else {

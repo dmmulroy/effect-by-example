@@ -370,6 +370,8 @@ const InternalProfile = extract(UserProfile, "internal") // Internal service cal
 ### Example 3: Form Validation with State Management
 
 ```typescript
+import { pipe } from "effect"
+
 const { Struct, Field, extract, fieldEvolve } = VariantSchema.make({
   variants: ["input", "validation", "submitted", "persisted"] as const,
   defaultVariant: "input"
@@ -378,21 +380,21 @@ const { Struct, Field, extract, fieldEvolve } = VariantSchema.make({
 const ContactForm = Struct({
   name: Field({
     input: Schema.string,
-    validation: Schema.pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
-    submitted: Schema.pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
-    persisted: Schema.pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    validation: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    submitted: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    persisted: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
   }),
   email: Field({
     input: Schema.string,
-    validation: Schema.pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    submitted: Schema.pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    persisted: Schema.pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    validation: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    submitted: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    persisted: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
   }),
   message: Field({
     input: Schema.string,
-    validation: Schema.pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
-    submitted: Schema.pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
-    persisted: Schema.pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
+    validation: pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
+    submitted: pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
+    persisted: pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
   }),
   id: Field({
     persisted: Schema.string,
@@ -440,12 +442,12 @@ const titleField = Field({
 
 // Transform the field - make published variant required with min length
 const evolvedTitleField = fieldEvolve(titleField, {
-  published: (schema) => pipe(Schema.minLength(schema, 1)),
+  published: (schema) => Schema.minLength(schema, 1),
 })
 
 // Result: Field({
 //   draft: Schema.string,
-//   published: Schema.pipe(Schema.string, Schema.minLength(1)),
+//   published: pipe(Schema.string, Schema.minLength(1)),
 // })
 ```
 
@@ -470,8 +472,8 @@ const BaseUser = Struct({
 // Add validation rules to all "validated" and "persisted" variants
 const ValidatedUser = Struct({
   email: fieldEvolve(BaseUser.schemas.email, {
-    validated: (schema) => pipe(Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    persisted: (schema) => pipe(Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    validated: (schema) => Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
+    persisted: (schema) => Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
   }),
   age: fieldEvolve(BaseUser.schemas.age, {
     validated: (schema) => pipe(Schema.int(schema), Schema.between(0, 150)),
@@ -505,7 +507,7 @@ const User = Struct({
       published: Schema.string,
     }),
     ["published"],
-    (schema) => pipe(Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+    (schema) => Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/)
   ),
 })
 ```
@@ -904,18 +906,18 @@ const { Struct, Field, extract } = VariantSchema.make({
 const UserInput = Struct({
   email: Field({
     lenient: Schema.string, // Accept any string
-    strict: Schema.pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    api: Schema.pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    strict: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    api: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
   }),
   age: Field({
     lenient: Schema.union(Schema.string, Schema.number), // Accept string or number
-    strict: Schema.pipe(Schema.number, Schema.int(), Schema.between(0, 150)),
-    api: Schema.pipe(Schema.number, Schema.int(), Schema.between(0, 150)),
+    strict: pipe(Schema.number, Schema.int(), Schema.between(0, 150)),
+    api: pipe(Schema.number, Schema.int(), Schema.between(0, 150)),
   }),
   name: Field({
     lenient: Schema.string,
-    strict: Schema.pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
-    api: Schema.pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    strict: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    api: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
   }),
 })
 
@@ -1038,13 +1040,13 @@ const { Struct, Field, extract } = VariantSchema.make({
 
 const CreateUserRequest = Struct({
   email: Field({
-    input: Schema.pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    input: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
   }),
   name: Field({
-    input: Schema.pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    input: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
   }),
   password: Field({
-    input: Schema.pipe(Schema.string, Schema.minLength(8)),
+    input: pipe(Schema.string, Schema.minLength(8)),
   }),
 })
 
@@ -1115,17 +1117,17 @@ const { Struct, Field, extract } = VariantSchema.make({
 const ContactForm = Struct({
   name: Field({
     form: Schema.string,
-    api: Schema.pipe(Schema.string, Schema.minLength(1)),
+    api: Schema.minLength(Schema.string, 1),
     display: Schema.string,
   }),
   email: Field({
     form: Schema.string,
-    api: Schema.pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    api: Schema.pattern(Schema.string, /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
     display: Schema.string,
   }),
   message: Field({
     form: Schema.string,
-    api: Schema.pipe(Schema.string, Schema.minLength(10)),
+    api: Schema.minLength(Schema.string, 10),
     display: Schema.string,
   }),
   newsletter: Field({

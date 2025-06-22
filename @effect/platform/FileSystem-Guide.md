@@ -86,7 +86,7 @@ const program = Effect.gen(function* () {
 })
 
 // Run with proper context
-NodeRuntime.runMain(program.pipe(Effect.provide(NodeContext.layer)))
+NodeRuntime.runMain(Effect.provide(program, NodeContext.layer))
 ```
 
 ### Key Concepts
@@ -126,7 +126,7 @@ const readWriteExample = Effect.gen(function* () {
   yield* fs.writeFile("copy.png", imageData)
 })
 
-NodeRuntime.runMain(readWriteExample.pipe(Effect.provide(NodeContext.layer)))
+NodeRuntime.runMain(Effect.provide(readWriteExample, NodeContext.layer))
 ```
 
 ### Directory Operations
@@ -155,7 +155,7 @@ const directoryOps = Effect.gen(function* () {
   yield* Console.log(`Is directory: ${stat.type === "Directory"}`)
 })
 
-NodeRuntime.runMain(directoryOps.pipe(Effect.provide(NodeContext.layer)))
+NodeRuntime.runMain(Effect.provide(directoryOps, NodeContext.layer))
 ```
 
 ### File Watching
@@ -368,8 +368,9 @@ const processLargeCSV = (inputPath: string, outputPath: string) => Effect.gen(fu
 )
 
 // Usage
-const program = processLargeCSV("./sales-data.csv", "./processed-sales.csv").pipe(
-  Effect.provide(NodeContext.layer)
+const program = Effect.provide(
+  processLargeCSV("./sales-data.csv", "./processed-sales.csv"),
+  NodeContext.layer
 )
 
 NodeRuntime.runMain(program)
@@ -1093,9 +1094,8 @@ describe("ConfigManager", () => {
     )
     
     await Effect.runPromise(
-      program.pipe(
-        Effect.provide(mockLayer),
-        Effect.scoped
+      Effect.scoped(
+        Effect.provide(program, mockLayer)
       )
     )
   })

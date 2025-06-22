@@ -46,11 +46,11 @@ import { Config, Effect } from "effect"
 
 // Declarative configuration definition
 const appConfig = Config.all({
-  port: Config.integer("PORT").pipe(Config.withDefault(3000)),
+  port: Config.withDefault(Config.integer("PORT"), 3000),
   dbUrl: Config.string("DATABASE_URL"),
-  debug: Config.boolean("DEBUG").pipe(Config.withDefault(false)),
-  timeout: Config.integer("TIMEOUT").pipe(Config.withDefault(5000)),
-  features: Config.array(Config.string(), "FEATURES").pipe(Config.withDefault([]))
+  debug: Config.withDefault(Config.boolean("DEBUG"), false),
+  timeout: Config.withDefault(Config.integer("TIMEOUT"), 5000),
+  features: Config.withDefault(Config.array(Config.string(), "FEATURES"), [])
 })
 
 const program = Effect.gen(function* () {
@@ -105,10 +105,10 @@ import { Config, Effect } from "effect"
 
 // Provide sensible defaults for optional configuration
 const serverConfig = Config.all({
-  port: Config.integer("PORT").pipe(Config.withDefault(3000)),
-  host: Config.string("HOST").pipe(Config.withDefault("localhost")),
-  workers: Config.integer("WORKERS").pipe(Config.withDefault(1)),
-  logLevel: Config.string("LOG_LEVEL").pipe(Config.withDefault("info"))
+  port: Config.withDefault(Config.integer("PORT"), 3000),
+  host: Config.withDefault(Config.string("HOST"), "localhost"),
+  workers: Config.withDefault(Config.integer("WORKERS"), 1),
+  logLevel: Config.withDefault(Config.string("LOG_LEVEL"), "info")
 })
 
 const program = Effect.gen(function* () {
@@ -126,14 +126,14 @@ import { Config, Effect } from "effect"
 // Build complex nested configuration objects
 const databaseConfig = Config.all({
   host: Config.string("DB_HOST"),
-  port: Config.integer("DB_PORT").pipe(Config.withDefault(5432)),
+  port: Config.withDefault(Config.integer("DB_PORT"), 5432),
   name: Config.string("DB_NAME"),
-  ssl: Config.boolean("DB_SSL").pipe(Config.withDefault(false))
+  ssl: Config.withDefault(Config.boolean("DB_SSL"), false)
 })
 
 const redisConfig = Config.all({
   host: Config.string("REDIS_HOST"),
-  port: Config.integer("REDIS_PORT").pipe(Config.withDefault(6379)),
+  port: Config.withDefault(Config.integer("REDIS_PORT"), 6379),
   password: Config.option(Config.string("REDIS_PASSWORD"))
 })
 
@@ -174,7 +174,7 @@ const serverConfig = Config.all({
     })
   ),
   
-  host: Config.string("HOST").pipe(Config.withDefault("0.0.0.0")),
+  host: Config.withDefault(Config.string("HOST"), "0.0.0.0"),
   
   // Environment-specific settings
   environment: Config.literal("NODE_ENV")("development", "staging", "production").pipe(
@@ -235,14 +235,14 @@ import { Config, Effect, Duration } from "effect"
 // Primary database configuration
 const primaryDbConfig = Config.all({
   host: Config.string("PRIMARY_DB_HOST"),
-  port: Config.integer("PRIMARY_DB_PORT").pipe(Config.withDefault(5432)),
+  port: Config.withDefault(Config.integer("PRIMARY_DB_PORT"), 5432),
   database: Config.string("PRIMARY_DB_NAME"),
   username: Config.string("PRIMARY_DB_USER"),
   password: Config.secret("PRIMARY_DB_PASSWORD"),
   
   // Connection pool settings
-  poolMin: Config.integer("PRIMARY_DB_POOL_MIN").pipe(Config.withDefault(2)),
-  poolMax: Config.integer("PRIMARY_DB_POOL_MAX").pipe(Config.withDefault(10)),
+  poolMin: Config.withDefault(Config.integer("PRIMARY_DB_POOL_MIN"), 2),
+  poolMax: Config.withDefault(Config.integer("PRIMARY_DB_POOL_MAX"), 10),
   
   // Timeouts and retries
   connectionTimeoutMs: Config.integer("PRIMARY_DB_TIMEOUT_MS").pipe(
@@ -253,14 +253,14 @@ const primaryDbConfig = Config.all({
     Config.withDefault(3)
   ),
   
-  ssl: Config.boolean("PRIMARY_DB_SSL").pipe(Config.withDefault(false))
+  ssl: Config.withDefault(Config.boolean("PRIMARY_DB_SSL"), false)
 })
 
 // Read replica configuration (optional)
 const replicaDbConfig = Config.option(
   Config.all({
     host: Config.string("REPLICA_DB_HOST"),
-    port: Config.integer("REPLICA_DB_PORT").pipe(Config.withDefault(5432)),
+    port: Config.withDefault(Config.integer("REPLICA_DB_PORT"), 5432),
     database: Config.string("REPLICA_DB_NAME"),
     username: Config.string("REPLICA_DB_USER"),
     password: Config.secret("REPLICA_DB_PASSWORD")
@@ -269,11 +269,11 @@ const replicaDbConfig = Config.option(
 
 // Redis cache configuration
 const cacheConfig = Config.all({
-  host: Config.string("REDIS_HOST").pipe(Config.withDefault("localhost")),
-  port: Config.integer("REDIS_PORT").pipe(Config.withDefault(6379)),
+  host: Config.withDefault(Config.string("REDIS_HOST"), "localhost"),
+  port: Config.withDefault(Config.integer("REDIS_PORT"), 6379),
   password: Config.option(Config.secret("REDIS_PASSWORD")),
-  keyPrefix: Config.string("REDIS_KEY_PREFIX").pipe(Config.withDefault("app:")),
-  ttlSeconds: Config.integer("REDIS_TTL_SECONDS").pipe(Config.withDefault(3600))
+  keyPrefix: Config.withDefault(Config.string("REDIS_KEY_PREFIX"), "app:"),
+  ttlSeconds: Config.withDefault(Config.integer("REDIS_TTL_SECONDS"), 3600)
 })
 
 // Complete data layer configuration
@@ -320,7 +320,7 @@ import { Config, Effect } from "effect"
 // Service identity and discovery
 const serviceConfig = Config.all({
   name: Config.string("SERVICE_NAME"),
-  version: Config.string("SERVICE_VERSION").pipe(Config.withDefault("1.0.0")),
+  version: Config.withDefault(Config.string("SERVICE_VERSION"), "1.0.0"),
   instanceId: Config.string("INSTANCE_ID").pipe(
     Config.withDefault(() => Math.random().toString(36).substr(2, 9))
   )
@@ -556,9 +556,9 @@ import { Config, Effect } from "effect"
 // Helper function for creating interdependent validation
 const createServerConfig = Effect.gen(function* () {
   // Load individual pieces first
-  const host = yield* Config.string("HOST").pipe(Config.withDefault("localhost"))
-  const port = yield* Config.integer("PORT").pipe(Config.withDefault(3000))
-  const ssl = yield* Config.boolean("SSL_ENABLED").pipe(Config.withDefault(false))
+  const host = yield* Config.withDefault(Config.string("HOST"), "localhost")
+  const port = yield* Config.withDefault(Config.integer("PORT"), 3000)
+  const ssl = yield* Config.withDefault(Config.boolean("SSL_ENABLED"), false)
   const certPath = yield* Config.option(Config.string("SSL_CERT_PATH"))
   const keyPath = yield* Config.option(Config.string("SSL_KEY_PATH"))
   
@@ -675,7 +675,7 @@ import { Config, Effect } from "effect"
 const createEnvironmentConfig = (env: "development" | "staging" | "production") => {
   const baseConfig = Config.all({
     appName: Config.string("APP_NAME"),
-    version: Config.string("APP_VERSION").pipe(Config.withDefault("1.0.0"))
+    version: Config.withDefault(Config.string("APP_VERSION"), "1.0.0")
   })
   
   const envSpecificConfig = (() => {
@@ -683,14 +683,14 @@ const createEnvironmentConfig = (env: "development" | "staging" | "production") 
       case "development":
         return Config.all({
           database: Config.all({
-            host: Config.string("DB_HOST").pipe(Config.withDefault("localhost")),
-            port: Config.integer("DB_PORT").pipe(Config.withDefault(5432)),
-            ssl: Config.boolean("DB_SSL").pipe(Config.withDefault(false)),
-            logQueries: Config.boolean("DB_LOG_QUERIES").pipe(Config.withDefault(true))
+            host: Config.withDefault(Config.string("DB_HOST"), "localhost"),
+            port: Config.withDefault(Config.integer("DB_PORT"), 5432),
+            ssl: Config.withDefault(Config.boolean("DB_SSL"), false),
+            logQueries: Config.withDefault(Config.boolean("DB_LOG_QUERIES"), true)
           }),
           
-          debug: Config.boolean("DEBUG").pipe(Config.withDefault(true)),
-          hotReload: Config.boolean("HOT_RELOAD").pipe(Config.withDefault(true)),
+          debug: Config.withDefault(Config.boolean("DEBUG"), true),
+          hotReload: Config.withDefault(Config.boolean("HOT_RELOAD"), true),
           corsOrigins: Config.array(Config.string(), "CORS_ORIGINS").pipe(
             Config.withDefault(["http://localhost:3000", "http://localhost:3001"])
           )
@@ -700,13 +700,13 @@ const createEnvironmentConfig = (env: "development" | "staging" | "production") 
         return Config.all({
           database: Config.all({
             host: Config.string("DB_HOST"),
-            port: Config.integer("DB_PORT").pipe(Config.withDefault(5432)),
-            ssl: Config.boolean("DB_SSL").pipe(Config.withDefault(true)),
-            logQueries: Config.boolean("DB_LOG_QUERIES").pipe(Config.withDefault(false))
+            port: Config.withDefault(Config.integer("DB_PORT"), 5432),
+            ssl: Config.withDefault(Config.boolean("DB_SSL"), true),
+            logQueries: Config.withDefault(Config.boolean("DB_LOG_QUERIES"), false)
           }),
           
-          debug: Config.boolean("DEBUG").pipe(Config.withDefault(false)),
-          hotReload: Config.boolean("HOT_RELOAD").pipe(Config.withDefault(false)),
+          debug: Config.withDefault(Config.boolean("DEBUG"), false),
+          hotReload: Config.withDefault(Config.boolean("HOT_RELOAD"), false),
           corsOrigins: Config.array(Config.string(), "CORS_ORIGINS")
         })
       
@@ -714,13 +714,13 @@ const createEnvironmentConfig = (env: "development" | "staging" | "production") 
         return Config.all({
           database: Config.all({
             host: Config.string("DB_HOST"),
-            port: Config.integer("DB_PORT").pipe(Config.withDefault(5432)),
-            ssl: Config.boolean("DB_SSL").pipe(Config.withDefault(true)),
-            logQueries: Config.boolean("DB_LOG_QUERIES").pipe(Config.withDefault(false))
+            port: Config.withDefault(Config.integer("DB_PORT"), 5432),
+            ssl: Config.withDefault(Config.boolean("DB_SSL"), true),
+            logQueries: Config.withDefault(Config.boolean("DB_LOG_QUERIES"), false)
           }),
           
-          debug: Config.boolean("DEBUG").pipe(Config.withDefault(false)),
-          hotReload: Config.boolean("HOT_RELOAD").pipe(Config.withDefault(false)),
+          debug: Config.withDefault(Config.boolean("DEBUG"), false),
+          hotReload: Config.withDefault(Config.boolean("HOT_RELOAD"), false),
           corsOrigins: Config.array(Config.string(), "CORS_ORIGINS")
         })
     }
@@ -758,7 +758,7 @@ import { Config, Effect, Secret } from "effect"
 const secureConfig = Config.all({
   // Regular non-sensitive config
   appName: Config.string("APP_NAME"),
-  port: Config.integer("PORT").pipe(Config.withDefault(3000)),
+  port: Config.withDefault(Config.integer("PORT"), 3000),
   
   // Sensitive configuration using secrets
   databasePassword: Config.secret("DB_PASSWORD"),
@@ -795,8 +795,8 @@ import { Config, Effect, Secret } from "effect"
 // Configuration for external secret providers
 const secretManagerConfig = Config.all({
   // AWS Secrets Manager
-  awsRegion: Config.string("AWS_REGION").pipe(Config.withDefault("us-east-1")),
-  secretsManagerEnabled: Config.boolean("USE_SECRETS_MANAGER").pipe(Config.withDefault(false)),
+  awsRegion: Config.withDefault(Config.string("AWS_REGION"), "us-east-1"),
+  secretsManagerEnabled: Config.withDefault(Config.boolean("USE_SECRETS_MANAGER"), false),
   
   // HashiCorp Vault
   vaultUrl: Config.option(Config.string("VAULT_URL")),
@@ -880,29 +880,29 @@ import { Config, Effect } from "effect"
 // Factory for creating database configurations
 const createDatabaseConfig = (prefix: string = "DB") => Config.all({
   host: Config.string(`${prefix}_HOST`),
-  port: Config.integer(`${prefix}_PORT`).pipe(Config.withDefault(5432)),
+  port: Config.withDefault(Config.integer(`${prefix}_PORT`), 5432),
   database: Config.string(`${prefix}_NAME`),
   username: Config.string(`${prefix}_USER`),
   password: Config.secret(`${prefix}_PASSWORD`),
   
   // Connection pool settings
   pool: Config.all({
-    min: Config.integer(`${prefix}_POOL_MIN`).pipe(Config.withDefault(2)),
-    max: Config.integer(`${prefix}_POOL_MAX`).pipe(Config.withDefault(10)),
-    idleTimeoutMs: Config.integer(`${prefix}_POOL_IDLE_TIMEOUT`).pipe(Config.withDefault(30000))
+    min: Config.withDefault(Config.integer(`${prefix}_POOL_MIN`), 2),
+    max: Config.withDefault(Config.integer(`${prefix}_POOL_MAX`), 10),
+    idleTimeoutMs: Config.withDefault(Config.integer(`${prefix}_POOL_IDLE_TIMEOUT`), 30000)
   }),
   
   // Advanced settings
-  ssl: Config.boolean(`${prefix}_SSL`).pipe(Config.withDefault(false)),
-  timezone: Config.string(`${prefix}_TIMEZONE`).pipe(Config.withDefault("UTC")),
-  queryTimeoutMs: Config.integer(`${prefix}_QUERY_TIMEOUT`).pipe(Config.withDefault(10000))
+  ssl: Config.withDefault(Config.boolean(`${prefix}_SSL`), false),
+  timezone: Config.withDefault(Config.string(`${prefix}_TIMEZONE`), "UTC"),
+  queryTimeoutMs: Config.withDefault(Config.integer(`${prefix}_QUERY_TIMEOUT`), 10000)
 })
 
 // Factory for creating HTTP service configurations
 const createHttpServiceConfig = (serviceName: string) => Config.all({
   baseUrl: Config.url(`${serviceName.toUpperCase()}_SERVICE_URL`),
-  timeout: Config.integer(`${serviceName.toUpperCase()}_TIMEOUT_MS`).pipe(Config.withDefault(5000)),
-  retries: Config.integer(`${serviceName.toUpperCase()}_RETRIES`).pipe(Config.withDefault(3)),
+  timeout: Config.withDefault(Config.integer(`${serviceName.toUpperCase()}_TIMEOUT_MS`), 5000),
+  retries: Config.withDefault(Config.integer(`${serviceName.toUpperCase()}_RETRIES`), 3),
   apiKey: Config.option(Config.secret(`${serviceName.toUpperCase()}_API_KEY`))
 })
 
@@ -1000,7 +1000,7 @@ const validatedConfig = {
 const validatedAppConfig = Config.all({
   server: Config.all({
     port: validatedConfig.port("SERVER_PORT", 3000),
-    host: Config.string("SERVER_HOST").pipe(Config.withDefault("localhost"))
+    host: Config.withDefault(Config.string("SERVER_HOST"), "localhost")
   }),
   
   database: Config.all({
@@ -1174,26 +1174,26 @@ import { createServer } from "http"
 
 // Application configuration
 const serverConfig = Config.all({
-  port: Config.integer("PORT").pipe(Config.withDefault(3000)),
-  host: Config.string("HOST").pipe(Config.withDefault("localhost")),
-  nodeEnv: Config.string("NODE_ENV").pipe(Config.withDefault("development")),
+  port: Config.withDefault(Config.integer("PORT"), 3000),
+  host: Config.withDefault(Config.string("HOST"), "localhost"),
+  nodeEnv: Config.withDefault(Config.string("NODE_ENV"), "development"),
   
   cors: Config.all({
     origins: Config.array(Config.string(), "CORS_ORIGINS").pipe(
       Config.withDefault(["http://localhost:3000"])
     ),
-    credentials: Config.boolean("CORS_CREDENTIALS").pipe(Config.withDefault(true))
+    credentials: Config.withDefault(Config.boolean("CORS_CREDENTIALS"), true)
   }),
   
   security: Config.all({
     jwtSecret: Config.secret("JWT_SECRET"),
-    rateLimitWindow: Config.integer("RATE_LIMIT_WINDOW_MS").pipe(Config.withDefault(900000)),
-    rateLimitMax: Config.integer("RATE_LIMIT_MAX").pipe(Config.withDefault(100))
+    rateLimitWindow: Config.withDefault(Config.integer("RATE_LIMIT_WINDOW_MS"), 900000),
+    rateLimitMax: Config.withDefault(Config.integer("RATE_LIMIT_MAX"), 100)
   }),
   
   database: Config.all({
     url: Config.string("DATABASE_URL"),
-    poolMax: Config.integer("DB_POOL_MAX").pipe(Config.withDefault(10))
+    poolMax: Config.withDefault(Config.integer("DB_POOL_MAX"), 10)
   })
 })
 
@@ -1280,13 +1280,13 @@ import { describe, it, expect, beforeEach } from "vitest"
 const appConfig = Config.all({
   database: Config.all({
     host: Config.string("DB_HOST"),
-    port: Config.integer("DB_PORT").pipe(Config.withDefault(5432)),
-    ssl: Config.boolean("DB_SSL").pipe(Config.withDefault(false))
+    port: Config.withDefault(Config.integer("DB_PORT"), 5432),
+    ssl: Config.withDefault(Config.boolean("DB_SSL"), false)
   }),
   
   features: Config.all({
-    newUI: Config.boolean("FEATURE_NEW_UI").pipe(Config.withDefault(false)),
-    analytics: Config.boolean("FEATURE_ANALYTICS").pipe(Config.withDefault(true))
+    newUI: Config.withDefault(Config.boolean("FEATURE_NEW_UI"), false),
+    analytics: Config.withDefault(Config.boolean("FEATURE_ANALYTICS"), true)
   })
 })
 

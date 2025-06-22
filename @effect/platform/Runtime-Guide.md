@@ -102,8 +102,8 @@ import { NodeRuntime } from "@effect/platform-node"
 import { Effect, Config, Layer } from "effect"
 
 const AppConfig = Config.all({
-  port: Config.integer("PORT").pipe(Config.withDefault(3000)),
-  logLevel: Config.string("LOG_LEVEL").pipe(Config.withDefault("info")),
+  port: Config.withDefault(Config.integer("PORT"), 3000),
+  logLevel: Config.withDefault(Config.string("LOG_LEVEL"), "info"),
   dbUrl: Config.string("DATABASE_URL")
 })
 
@@ -116,9 +116,9 @@ const configuredApp = Effect.gen(function* () {
   return "configured app started"
 })
 
-NodeRuntime.runMain(configuredApp.pipe(
-  Effect.provide(Layer.setConfigProvider(Config.fromEnv()))
-))
+NodeRuntime.runMain(
+  Effect.provide(configuredApp, Layer.setConfigProvider(Config.fromEnv()))
+)
 ```
 
 ### Pattern 3: Error Handling and Custom Teardown
@@ -1007,10 +1007,10 @@ import { Effect, Config, Layer, LogLevel } from "effect"
 
 // Application configuration schema
 const AppConfig = Config.all({
-  environment: Config.string("NODE_ENV").pipe(Config.withDefault("development")),
-  port: Config.integer("PORT").pipe(Config.withDefault(3000)),
-  logLevel: Config.string("LOG_LEVEL").pipe(Config.withDefault("info")),
-  shutdownTimeout: Config.integer("SHUTDOWN_TIMEOUT_MS").pipe(Config.withDefault(30000))
+  environment: Config.withDefault(Config.string("NODE_ENV"), "development"),
+  port: Config.withDefault(Config.integer("PORT"), 3000),
+  logLevel: Config.withDefault(Config.string("LOG_LEVEL"), "info"),
+  shutdownTimeout: Config.withDefault(Config.integer("SHUTDOWN_TIMEOUT_MS"), 30000)
 })
 
 // Application factory

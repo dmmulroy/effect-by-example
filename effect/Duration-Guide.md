@@ -87,8 +87,8 @@ const isLonger = Duration.greaterThan(sessionDuration, cacheTimeout)
 console.log(Duration.format(sessionDuration)) // "1 hour 30 minutes"
 
 // Integration with Effect operations
-const withTimeout = pipe(
-  Effect.timeout(Effect.sleep(Duration.seconds(5)), Duration.seconds(3))
+const withTimeout = Effect.sleep(Duration.seconds(5)).pipe(
+  Effect.timeout(Duration.seconds(3))
 )
 ```
 
@@ -278,10 +278,9 @@ const apiCallWithRetry = (url: string) =>
   pipe(
     Effect.retry(
       makeApiCall(url),
-      Schedule.exponential(Duration.seconds(1), 2).pipe(
-        Schedule.either(
-          Schedule.recurs(5) // Max 5 retries
-        )
+      Schedule.either(
+        Schedule.exponential(Duration.seconds(1), 2),
+        Schedule.recurs(5) // Max 5 retries
       )
     ),
     Effect.catchTag("RateLimitExceeded", (error) =>
@@ -930,8 +929,9 @@ import { Effect, Duration, Schedule, pipe } from "effect"
 const retrySchedules = {
   // Fixed interval with jitter
   withJitter: (baseDelay: Duration.Duration, jitterFactor = 0.1) =>
-    Schedule.fixed(baseDelay).pipe(
-      Schedule.jittered({ min: 1 - jitterFactor, max: 1 + jitterFactor })
+    Schedule.jittered(
+      Schedule.fixed(baseDelay),
+      { min: 1 - jitterFactor, max: 1 + jitterFactor }
     ),
   
   // Exponential backoff with cap
@@ -940,8 +940,9 @@ const retrySchedules = {
     factor: number,
     cap: Duration.Duration
   ) =>
-    Schedule.exponential(initial, factor).pipe(
-      Schedule.either(Schedule.spaced(cap))
+    Schedule.either(
+      Schedule.exponential(initial, factor),
+      Schedule.spaced(cap)
     ),
   
   // Linear increase with maximum

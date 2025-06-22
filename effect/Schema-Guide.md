@@ -80,8 +80,8 @@ import { Effect } from "effect"
 // Define once, use everywhere
 const User = Schema.Struct({
   id: Schema.String,
-  email: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-  age: Schema.Number.pipe(Schema.positive()),
+  email: Schema.pattern(Schema.String, /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
+  age: Schema.positive(Schema.Number),
   role: Schema.Literal('admin', 'user')
 })
 
@@ -463,13 +463,13 @@ const DbTimestamps = Schema.Struct({
 
 // Product model with different views
 const ProductBase = Schema.Struct({
-  name: Schema.String.pipe(Schema.minLength(1)),
+  name: Schema.minLength(Schema.String, 1),
   description: Schema.optional(Schema.String),
-  price: Schema.Number.pipe(Schema.positive()),
+  price: Schema.positive(Schema.Number),
   category: Schema.String,
   tags: Schema.Array(Schema.String),
   inventory: Schema.Struct({
-    quantity: Schema.Number.pipe(Schema.nonNegative()),
+    quantity: Schema.nonNegative(Schema.Number),
     warehouse: Schema.String
   })
 })

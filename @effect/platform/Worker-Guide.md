@@ -647,14 +647,20 @@ const backgroundTaskLayer = Layer.mergeAll(
 
 // Task queue processor
 const processTaskQueue = (taskQueue: Queue.Queue<AnyTask>) => Effect.gen(function* () {
-  const emailPool = yield* Worker.WorkerPool.pipe(
-    Effect.provideService(Worker.Spawner, () => emailWorker)
+  const emailPool = yield* Effect.provideService(
+    Worker.WorkerPool,
+    Worker.Spawner,
+    () => emailWorker
   )
-  const reportPool = yield* Worker.WorkerPool.pipe(
-    Effect.provideService(Worker.Spawner, () => reportWorker)
+  const reportPool = yield* Effect.provideService(
+    Worker.WorkerPool,
+    Worker.Spawner,
+    () => reportWorker
   )
-  const filePool = yield* Worker.WorkerPool.pipe(
-    Effect.provideService(Worker.Spawner, () => fileWorker)
+  const filePool = yield* Effect.provideService(
+    Worker.WorkerPool,
+    Worker.Spawner,
+    () => fileWorker
   )
   
   // Process tasks from queue

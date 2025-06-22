@@ -168,8 +168,8 @@ import { SortedSet, Order, pipe } from "effect"
 // Type-safe sorted set with automatic ordering
 const scoreBoard = SortedSet.empty<number>(Order.reverse(Order.number)) // Descending
 
-const withScores = pipe(
-  SortedSet.add(scoreBoard, 95),
+const withScores = scoreBoard.pipe(
+  SortedSet.add(95),
   SortedSet.add(87),
   SortedSet.add(92),
   SortedSet.add(87), // Duplicate - automatically ignored
@@ -181,14 +181,14 @@ const topScores = Array.from(SortedSet.values(withScores))
 // [95, 92, 88, 87] - automatically sorted descending
 
 // Efficient set operations
-const teamAScores = pipe(
-  SortedSet.add(SortedSet.empty(Order.number), 85),
+const teamAScores = SortedSet.empty(Order.number).pipe(
+  SortedSet.add(85),
   SortedSet.add(90),
   SortedSet.add(88)
 )
 
-const teamBScores = pipe(
-  SortedSet.add(SortedSet.empty(Order.number), 88),
+const teamBScores = SortedSet.empty(Order.number).pipe(
+  SortedSet.add(88),
   SortedSet.add(92),
   SortedSet.add(87)
 )
@@ -211,8 +211,8 @@ const taskOrder = Order.combine(
 
 const taskQueue = SortedSet.empty<Task>(taskOrder)
 
-const withTasks = pipe(
-  SortedSet.add(taskQueue, { priority: 2, dueDate: new Date('2024-01-20'), name: 'Medium task' }),
+const withTasks = taskQueue.pipe(
+  SortedSet.add({ priority: 2, dueDate: new Date('2024-01-20'), name: 'Medium task' }),
   SortedSet.add({ priority: 1, dueDate: new Date('2024-01-15'), name: 'Low task' }),
   SortedSet.add({ priority: 3, dueDate: new Date('2024-01-18'), name: 'High task' })
 )
@@ -273,8 +273,8 @@ const versionOrder = Order.struct({
   patch: Order.number
 })
 
-const supportedVersions = pipe(
-  SortedSet.add(SortedSet.empty<Version>(versionOrder), { major: 1, minor: 0, patch: 0 }),
+const supportedVersions = SortedSet.empty<Version>(versionOrder).pipe(
+  SortedSet.add({ major: 1, minor: 0, patch: 0 }),
   SortedSet.add({ major: 1, minor: 1, patch: 0 }),
   SortedSet.add({ major: 2, minor: 0, patch: 0 }),
   SortedSet.add({ major: 1, minor: 0, patch: 1 })
@@ -282,8 +282,8 @@ const supportedVersions = pipe(
 
 // Reverse ordering for descending sort
 const descendingNumbers = SortedSet.empty<number>(Order.reverse(Order.number))
-const scores = pipe(
-  SortedSet.add(descendingNumbers, 85),
+const scores = descendingNumbers.pipe(
+  SortedSet.add(85),
   SortedSet.add(92),
   SortedSet.add(78),
   SortedSet.add(95)
@@ -296,8 +296,8 @@ const scores = pipe(
 ```typescript
 import { SortedSet, Order, pipe } from "effect"
 
-const fruits = pipe(
-  SortedSet.add(SortedSet.empty<string>(Order.string), 'apple'),
+const fruits = SortedSet.empty<string>(Order.string).pipe(
+  SortedSet.add('apple'),
   SortedSet.add('banana'),
   SortedSet.add('cherry')
 )
@@ -310,8 +310,8 @@ const hasOrange = SortedSet.has(fruits, 'orange') // false
 const fruitCount = SortedSet.size(fruits) // 3
 
 // Adding elements (returns new set)
-const moreFruits = pipe(
-  SortedSet.add(fruits, 'date'),
+const moreFruits = fruits.pipe(
+  SortedSet.add('date'),
   SortedSet.add('elderberry'),
   SortedSet.add('apple') // Duplicate ignored
 )
@@ -2501,8 +2501,8 @@ describe("SortedSet Testing", () => {
   // Custom comparator testing
   it("respects custom ordering", () => {
     const reverseOrder = Order.reverse(Order.number)
-    const set = pipe(
-      SortedSet.add(SortedSet.empty<number>(reverseOrder), 1),
+    const set = SortedSet.empty<number>(reverseOrder).pipe(
+      SortedSet.add(1),
       SortedSet.add(3),
       SortedSet.add(2)
     )

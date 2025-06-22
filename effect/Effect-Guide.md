@@ -153,8 +153,7 @@ const fetchUser = (userId: string) =>
       .pipe(
         Effect.timeout(Duration.seconds(5)),
         Effect.retry(
-          Schedule.exponential(Duration.seconds(1))
-            .pipe(Schedule.compose(Schedule.recurs(3)))
+          Schedule.compose(Schedule.exponential(Duration.seconds(1)), Schedule.recurs(3))
         )
       )
     
@@ -171,9 +170,7 @@ const fetchUser = (userId: string) =>
     })
     
     // Validate with Schema
-    return yield* Schema.decode(UserSchema)(data).pipe(
-      Effect.mapError(() => new InvalidUserDataError({ data }))
-    )
+    return yield* Effect.mapError(Schema.decode(UserSchema)(data), () => new InvalidUserDataError({ data }))
   })
 
 // Composable operations with proper error handling
@@ -276,7 +273,7 @@ const readFile = (path: string) =>
 
 ```typescript
 // Simple transformations - use .pipe
-const doubled = success.pipe(Effect.map((n) => n * 2))
+const doubled = Effect.map(success, (n) => n * 2)
 
 // Error transformations - use .pipe
 const recovered = failure.pipe(

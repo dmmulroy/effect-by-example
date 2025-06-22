@@ -261,6 +261,8 @@ Modules that would benefit from this documentation style:
 - **Config**: Configuration management
 - **CLI**: Command-line interface building
 
+## All of Effect-TS' source code is available for you to examine and read in ./effect-src
+
 ## Effect-TS Syntax Guidelines
 
 ### Core Principle: Hybrid Pattern
@@ -419,29 +421,130 @@ const formatUserNames = getUsers().pipe(
 | Function Factories  | Effect.gen + yield* | Building functions with dependencies            |
 
 
-### Pipe() Function Standards/Rules
-NOTE: this is the imported { pipe } from 'effect' and not effect.pipe
-use pipe() consistently:
+## Pipe Standards/Rules
 
-#### Rule: Pipe Value-First to Function-First
-Prefer function-first  `pipe(fn1(value), fn2)` patterns compared to value-firt `pipe(value, fn1, fn2)` 
+### Prioritization: Pipeable > pipe() > Direct Calls
 
-```typescript
-// ❌ BAD (value-first):
-const result = pipe(
-  numbers,
-  Array.filter(n => n % 2 === 0),
-  Array.map(n => n * n),
-  Array.take(3)
+#### Priority Order:
+1. **Pipeable interface (.pipe() method)** - Use when available
+2. **Standalone pipe()** - Use for non-Pipeable types or complex flows
+3. **Direct function calls** - Use for simple single operations
+
+### When to Use Each Pattern
+
+#### Use Pipeable interface (.pipe() method) when:
+- The type implements Pipeable (Effect, Option, Array, Stream, etc.)
+  - You can check this via the Effect MCP server or checking the source at ./effect-src
+- You have 1+ sequential operations
+- Working with Effect ecosystem types
+
+#### Use standalone pipe() when:
+- Working with non-Pipeable types (plain objects, primitives)
+- Complex nested operations on non-Effect types
+- Multi-step transformations where Pipeable isn't available
+
+#### Use direct function calls when:
+- Single operation on non-Pipeable types
+- Simple operations that don't benefit from pipeline flow
+- Working outside Effect ecosystem
+
+### **IMPORTANT**
+If you opt to use the Pipeable interface ALWAYS validate that the type implements
+it via the effect src code at effect-src/ or asking the effect mcp server.
+
+### Examples by Pattern
+
+```TypeScript
+// ✅ BEST: Pipeable interface (when available)
+const result = someEffect.pipe(
+  Effect.map(transform),
+  Effect.flatMap(process),
+  Effect.catchAll(handleError)
 )
 
-// ✅ GOOD (function-first):
+// ✅ BEST: Pipeable interface (when available)
+const result = Option.fromNullable(nullableValue).pipe(
+  Option.map(transform),
+  Option.flatMap(process),
+)
+
+// ✅ GOOD: Standalone pipe() for non-Pipeable types
+const numbers = pipe(
+  Arr.map([1, 2, 3, 4, 5], x => x * 2),
+  Arr.filter(x => x > 4),
+  Arr.take(2)
+)
+
+// ✅ GOOD: Standalone pipe() for non-Pipeable, non-Effect types
 const result = pipe(
-  Array.filter(numbers, n => n % 2 === 0),
-  Array.map(n => n * n),
-  Array.take(3)
+  transformObject(plainObject),
+  validateObject,
+  processObject
+)
+
+// ✅ GOOD: Direct calls for simple operations
+const result = Arr.take(numbers, 3)
+const doubled = Arr.map(numbers, x => x * 2)
+
+// ❌ BAD: Using standalone pipe() when Pipeable is available
+const result = pipe(
+  someEffect,
+  Effect.map(transform),
+  Effect.flatMap(process)
+)
+
+// ❌ BAD: Unnecessary pipe for single operations
+const result = pipe(Arr.take(numbers, 3))
+
+// ❌ BAD: Passing "data first" instead of passing the data to the first function
+const result = pipe(
+  plainObject,
+  transformObject,
+  validateObject,
+  processObject
 )
 ```
+
+### Rule: Function-First Pattern Within Both Pipe Types
+
+#### For Pipeable interface:
+```TypeScript
+// ✅ GOOD: Method chaining with Pipeable
+const result = pipeableValue.pipe(
+  fn1,
+  fn2,
+  fn3
+)
+```
+
+#### For standalone pipe():
+```TypeScript
+// ✅ GOOD: `value` is not Pipeable
+const result = pipe(
+  fn1(value),
+  fn2,
+  fn3
+)
+```
+
+### Decision Matrix — Choosing the Right Call Pattern
+
+| Scenario                         | Data Type                                   | **Recommended Pattern**       | Rationale (why this pattern)                                                                 | Example |
+| -------------------------------- | ------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------- | ------- |
+| **Single operation**             | **Pipeable** (`Effect`, `Option`, `Array`, `Stream`, …) | `.pipe(fn)`                   | Pipeable interface is available → highest-priority API even for one step                     | ```ts const result = someEffect.pipe(Effect.map(fn)) ``` |
+| **Single operation**             | **Non-Pipeable** (plain objects, primitives) | Direct call                   | Pipeline adds no value for a lone step                                                       | ```ts const doubled = Arr.map(numbers, x => x * 2) ``` |
+| **2 + sequential operations**    | **Pipeable**                                | `.pipe(fn1, fn2, …)`          | Reads left-to-right and stays within the Effect ecosystem                                    | ```ts const result = Option.fromNullable(v).pipe( Option.map(f1), Option.flatMap(f2) ) ``` |
+| **2 + sequential operations**    | **Non-Pipeable**                            | `pipe(value, fn1, fn2, …)`    | Provides readable flow when chaining on non-Pipeables                                        | ```ts const output = pipe(obj, transform, validate) ``` |
+| **Complex / nested transforms**  | **Pipeable**                                | `.pipe(fn1, fn2, fn3, …)`     | Flattens deeply-nested calls while remaining Pipeable                                        | ```ts const out = array.pipe( Array.map(fn), Array.filter(pred), Array.take(3) ) ``` |
+| **Complex / nested transforms**  | **Non-Pipeable**                            | `pipe(value, fn1, fn2, fn3, …)` | Avoids pyramid of calls; keeps flow linear                                                   | ```ts const saved = pipe(data, parse, validate, transform, save) ``` |
+
+
+#### Anti-patterns 🚫
+| Situation | Why to avoid | Example |
+| ---------- | ------------ | ------- |
+| Pipeable value but using standalone `pipe()` | Redundant—violates priority order | ```ts const out = pipe( someEffect, Effect.map(f), Effect.flatMap(g) ) ``` |
+| Any type with unnecessary `pipe()` for a single step | Indirection without benefit | ```ts const out = pipe(Arr.take(nums, 3)) ``` |
+
 
 ### Import Rules/Standards
 

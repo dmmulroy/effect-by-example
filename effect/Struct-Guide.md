@@ -1480,15 +1480,15 @@ import { Struct, Effect, Schema } from "effect"
 const UserSchema = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
-  email: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-  age: Schema.Number.pipe(Schema.between(0, 150)),
+  email: Schema.pattern(Schema.String, /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
+  age: Schema.between(Schema.Number, 0, 150),
   isActive: Schema.Boolean
 })
 
 const ProductSchema = Schema.Struct({
   id: Schema.String,
-  name: Schema.String.pipe(Schema.minLength(1)),
-  price: Schema.Number.pipe(Schema.positive()),
+  name: Schema.minLength(Schema.String, 1),
+  price: Schema.positive(Schema.Number),
   category: Schema.String,
   tags: Schema.Array(Schema.String)
 })

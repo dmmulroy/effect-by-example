@@ -53,21 +53,23 @@ import { pipe } from "effect"
 
 // Efficient chunk operations with structural sharing
 const processLargeDataset = (data: Chunk.Chunk<number>): Chunk.Chunk<number> =>
-  pipe(
-    Chunk.sort(Chunk.take(Chunk.map(Chunk.filter(data, x => x > 0), x => x * 2), 1000), (a, b) => a - b)   // Immutable sorting
+  data.pipe(
+    Chunk.filter(x => x > 0),
+    Chunk.map(x => x * 2),
+    Chunk.take(1000),
+    Chunk.sort((a, b) => a - b)
   )
 
 // Memory-efficient with large datasets
-const millionNumbers = pipe(
-  Chunk.map(Chunk.range(0, 1_000_000), i => i - 500_000)
+const millionNumbers = Chunk.range(0, 1_000_000).pipe(
+  Chunk.map(i => i - 500_000)
 )
 const result = processLargeDataset(millionNumbers) // Minimal memory overhead
 
 // Efficient nested operations
 const nestedOperations = (datasets: Chunk.Chunk<Chunk.Chunk<number>>): Chunk.Chunk<number> =>
-  pipe(
-    datasets,
-    Chunk.flatMap(dataset => pipe(Chunk.map(dataset, x => x * 2))),
+  datasets.pipe(
+    Chunk.flatMap(dataset => Chunk.map(dataset, x => x * 2)),
     Chunk.filter(x => x > 100),
     Chunk.take(500)
   )
@@ -120,23 +122,21 @@ import { Chunk, pipe } from "effect"
 const numbers = Chunk.range(1, 10)
 
 // Map transformations
-const doubled = pipe(
-  Chunk.map(numbers, x => x * 2)
-)
+const doubled = Chunk.map(numbers, x => x * 2)
 
 // Filtering
-const evens = pipe(
-  Chunk.filter(numbers, x => x % 2 === 0)
-)
+const evens = Chunk.filter(numbers, x => x % 2 === 0)
 
 // Taking and dropping
-const firstThree = pipe(Chunk.take(numbers, 3))
-const skipTwo = pipe(Chunk.drop(numbers, 2))
-const middleThree = pipe(Chunk.take(Chunk.drop(numbers, 2), 3))
+const firstThree = Chunk.take(numbers, 3)
+const skipTwo = Chunk.drop(numbers, 2)
+const middleThree = Chunk.drop(numbers, 2).pipe(Chunk.take(3))
 
 // Combining operations
-const processed = pipe(
-  Chunk.take(Chunk.map(Chunk.filter(numbers, x => x > 3), x => x * x), 3)
+const processed = numbers.pipe(
+  Chunk.filter(x => x > 3),
+  Chunk.map(x => x * x), 
+  Chunk.take(3)
 )
 
 console.log(Chunk.toReadonlyArray(processed)) // [16, 25, 36]
@@ -209,8 +209,7 @@ const processLogFile = (lines: string[]): Effect.Effect<LogEntry[]> =>
   Effect.sync(() => {
     const logChunk = Chunk.fromIterable(lines)
     
-    return pipe(
-      logChunk,
+    return logChunk.pipe(
       // Parse all lines, keeping only valid entries
       Chunk.filterMap(parseLogLine),
       // Filter for errors from last 24 hours
@@ -311,8 +310,7 @@ const processAllProducts = Effect.gen(function* () {
     const page = yield* fetchProductPage(cursor)
     
     // Add new products to chunk efficiently
-    allProducts = pipe(
-      allProducts,
+    allProducts = allProducts.pipe(
       Chunk.appendAll(Chunk.fromIterable(page.data))
     )
     
@@ -323,20 +321,18 @@ const processAllProducts = Effect.gen(function* () {
   console.log(`Fetched ${Chunk.size(allProducts)} total products`)
   
   // Process all products efficiently
-  const analysis = pipe(
-    allProducts,
+  const analysis = allProducts.pipe(
     // Group by category and analyze
     products => {
-      const electronics = pipe(Chunk.filter(products, p => p.category === 'electronics'))
-      const clothing = pipe(Chunk.filter(products, p => p.category === 'clothing'))
-      const books = pipe(Chunk.filter(products, p => p.category === 'books'))
-      const home = pipe(Chunk.filter(products, p => p.category === 'home'))
+      const electronics = Chunk.filter(products, p => p.category === 'electronics')
+      const clothing = Chunk.filter(products, p => p.category === 'clothing')
+      const books = Chunk.filter(products, p => p.category === 'books')
+      const home = Chunk.filter(products, p => p.category === 'home')
       
       return {
         totalProducts: Chunk.size(products),
-        inStockCount: pipe(Chunk.size(Chunk.filter(products, p => p.inStock))),
-        averagePrice: pipe(
-          Chunk.map(products, p => p.price),
+        inStockCount: Chunk.size(Chunk.filter(products, p => p.inStock)),
+        averagePrice: Chunk.map(products, p => p.price).pipe(
           prices => Chunk.reduce(prices, 0, (sum, price) => sum + price) / Chunk.size(prices)
         ),
         categoryBreakdown: {
@@ -345,13 +341,9 @@ const processAllProducts = Effect.gen(function* () {
           books: Chunk.size(books),
           home: Chunk.size(home)
         },
-        topExpensive: pipe(
-          Chunk.toReadonlyArray(
-            Chunk.take(
-              Chunk.sort(products, (a, b) => b.price - a.price),
-              10
-            )
-          )
+        topExpensive: Chunk.sort(products, (a, b) => b.price - a.price).pipe(
+          Chunk.take(10),
+          Chunk.toReadonlyArray
         )
       }
     }
@@ -406,13 +398,11 @@ class SensorWindowProcessor {
     const currentWindow = this.windows.get(sensorId) || Chunk.empty<SensorReading>()
     
     // Add new reading
-    const updatedWindow = pipe(Chunk.append(currentWindow, reading))
+    const updatedWindow = Chunk.append(currentWindow, reading)
     
     // Remove readings outside window
     const windowStart = reading.timestamp - this.windowSize
-    const filteredWindow = pipe(
-      Chunk.filter(updatedWindow, r => r.timestamp >= windowStart)
-    )
+    const filteredWindow = Chunk.filter(updatedWindow, r => r.timestamp >= windowStart)
     
     this.windows.set(sensorId, filteredWindow)
     
@@ -428,24 +418,22 @@ class SensorWindowProcessor {
     sensorId: string
   ): WindowStats {
     const readingsArray = Chunk.toReadonlyArray(readings)
-    const temperatures = pipe(Chunk.map(readings, r => r.temperature))
-    const humidities = pipe(Chunk.map(readings, r => r.humidity))
+    const temperatures = Chunk.map(readings, r => r.temperature)
+    const humidities = Chunk.map(readings, r => r.humidity)
     
     return {
       windowStart: Math.min(...readingsArray.map(r => r.timestamp)),
       windowEnd: Math.max(...readingsArray.map(r => r.timestamp)),
       sensorId,
-      avgTemperature: pipe(
-        temperatures,
+      avgTemperature: temperatures.pipe(
         temps => Chunk.reduce(temps, 0, (sum, temp) => sum + temp) / Chunk.size(temps)
       ),
-      avgHumidity: pipe(
-        humidities,
+      avgHumidity: humidities.pipe(
         hums => Chunk.reduce(hums, 0, (sum, hum) => sum + hum) / Chunk.size(hums)
       ),
       readingCount: Chunk.size(readings),
-      minTemp: pipe(Chunk.reduce(temperatures, Infinity, Math.min)),
-      maxTemp: pipe(Chunk.reduce(temperatures, -Infinity, Math.max))
+      minTemp: Chunk.reduce(temperatures, Infinity, Math.min),
+      maxTemp: Chunk.reduce(temperatures, -Infinity, Math.max)
     }
   }
 }
@@ -539,9 +527,9 @@ import { Chunk, pipe } from "effect"
 const largeChunk = Chunk.range(1, 100_000)
 
 // Operations create new chunks but share structure
-const filtered = pipe(Chunk.filter(largeChunk, x => x % 2 === 0))
-const mapped = pipe(Chunk.map(filtered, x => x * 2))
-const taken = pipe(Chunk.take(mapped, 1000))
+const filtered = Chunk.filter(largeChunk, x => x % 2 === 0)
+const mapped = Chunk.map(filtered, x => x * 2)
+const taken = Chunk.take(mapped, 1000)
 
 // Memory usage is much lower than copying arrays
 // Each operation reuses parts of the previous chunk
@@ -560,8 +548,7 @@ const measureChunkOperations = () => {
   const initial = Chunk.range(1, 50_000)
   
   // Chain multiple operations
-  const result = pipe(
-    initial,
+  const result = initial.pipe(
     Chunk.map(x => ({ id: x, value: x * 2, category: x % 10 })),
     Chunk.filter(item => item.category < 5),
     Chunk.map(item => ({ ...item, processed: true })),
@@ -611,8 +598,7 @@ const expensiveTransform = (x: number): number => {
 
 // Lazy evaluation - computation only happens for taken elements
 const efficientProcessing = (data: Chunk.Chunk<number>) =>
-  pipe(
-    data,
+  data.pipe(
     Chunk.map(expensiveTransform),  // This is lazy!
     Chunk.filter(x => x > 1000),    // This is lazy!
     Chunk.take(5)                   // Only 5 elements computed
@@ -651,8 +637,7 @@ const findFirst = <A>(
 ): Option.Option<A> => {
   // This would be implemented internally with lazy evaluation
   // Here's the conceptual approach
-  return pipe(
-    chunk,
+  return chunk.pipe(
     Chunk.filter(predicate),
     Chunk.head  // Stops at first match due to lazy evaluation
   )
@@ -669,7 +654,7 @@ const processUntilCondition = <A, B>(
   
   for (const item of iterator) {
     const transformed = transform(item)
-    result = pipe(Chunk.append(result, transformed))
+    result = Chunk.append(result, transformed)
     
     if (stopCondition(transformed)) {
       break  // Early termination
@@ -715,10 +700,9 @@ const slidingWindow = <A>(
   const size = Chunk.size(chunk)
   const windows = Chunk.empty<Chunk.Chunk<A>>()
   
-  return pipe(
-    Chunk.range(0, size - windowSize),
-    Chunk.map(i => pipe(Chunk.take(Chunk.drop(chunk, i), windowSize))),
-    Chunk.reduce(windows, (acc, window) => pipe(Chunk.append(acc, window)))
+  return Chunk.range(0, size - windowSize).pipe(
+    Chunk.map(i => Chunk.drop(chunk, i).pipe(Chunk.take(windowSize))),
+    Chunk.reduce(windows, (acc, window) => Chunk.append(acc, window))
   )
 }
 
@@ -732,10 +716,8 @@ const chunksOf = <A>(
   const totalSize = Chunk.size(chunk)
   const numChunks = Math.ceil(totalSize / size)
   
-  return pipe(
-    Chunk.range(0, numChunks - 1),
-    Chunk.map(i => pipe(
-      chunk, 
+  return Chunk.range(0, numChunks - 1).pipe(
+    Chunk.map(i => chunk.pipe(
       Chunk.drop(i * size), 
       Chunk.take(size)
     ))
@@ -752,7 +734,7 @@ const groupBy = <A, K>(
   Chunk.forEach(chunk, item => {
     const key = keyFn(item)
     const existing = groups.get(key) || Chunk.empty<A>()
-    groups.set(key, pipe(Chunk.append(existing, item)))
+    groups.set(key, Chunk.append(existing, item))
   })
   
   return groups
@@ -795,11 +777,11 @@ const processInBatches = <A, B>(
     let remaining = data
     
     while (!Chunk.isEmpty(remaining)) {
-      const batch = pipe(Chunk.take(remaining, batchSize))
+      const batch = Chunk.take(remaining, batchSize)
       const processed = yield* processor(batch)
       
-      result = pipe(Chunk.appendAll(result, processed))
-      remaining = pipe(Chunk.drop(remaining, batchSize))
+      result = Chunk.appendAll(result, processed)
+      remaining = Chunk.drop(remaining, batchSize)
     }
     
     return result
@@ -815,14 +797,12 @@ const processWithBackpressure = <A, B>(
     const results = Chunk.empty<B>()
     
     // Process in concurrent batches
-    const batches = pipe(
-      data,
+    const batches = data.pipe(
       chunk => {
         const size = Chunk.size(chunk)
         const batchCount = Math.ceil(size / concurrency)
         return Chunk.range(0, batchCount - 1).pipe(
-          Chunk.map(i => pipe(
-            chunk,
+          Chunk.map(i => chunk.pipe(
             Chunk.drop(i * concurrency),
             Chunk.take(concurrency)
           ))
@@ -836,7 +816,7 @@ const processWithBackpressure = <A, B>(
           { concurrency }
         )
       
-      results.pipe(Chunk.appendAll(Chunk.fromIterable(batchResults)))
+      results = results.pipe(Chunk.appendAll(Chunk.fromIterable(batchResults)))
     }
     
     return results
@@ -891,9 +871,9 @@ const safeTransform = <A, B>(
   Chunk.forEach(chunk, item => {
     const result = transform(item)
     if (Either.isRight(result)) {
-      successes = pipe(Chunk.append(successes, result.right))
+      successes = Chunk.append(successes, result.right)
     } else {
-      errors = pipe(Chunk.append(errors, result.left))
+      errors = Chunk.append(errors, result.left)
     }
   })
   
@@ -906,8 +886,7 @@ const validateAndTransform = <A>(
   validators: Array<(a: A) => boolean>,
   transformer: (a: A) => A
 ): Chunk.Chunk<A> =>
-  pipe(
-    data,
+  data.pipe(
     Chunk.filter(item => validators.every(validate => validate(item))),
     Chunk.map(transformer)
   )
@@ -982,8 +961,7 @@ const performanceComparisons = () => {
   
   // Compare different approaches
   const chunkApproach = () =>
-    pipe(
-      largeDataset,
+    largeDataset.pipe(
       Chunk.filter(x => x % 2 === 0),
       Chunk.map(x => x * x),
       Chunk.take(1000),
@@ -1010,8 +988,7 @@ const memoryEfficientPatterns = () => {
   // Pattern 1: Avoid converting to arrays until necessary
   const processLargeChunk = (data: Chunk.Chunk<number>) => {
     // Keep as chunk throughout pipeline
-    const processed = pipe(
-      data,
+    const processed = data.pipe(
       Chunk.filter(x => x > 50),
       Chunk.map(x => ({ value: x, squared: x * x })),
       Chunk.take(100)
@@ -1023,8 +1000,7 @@ const memoryEfficientPatterns = () => {
   
   // Pattern 2: Use chunk operations for bulk operations
   const bulkOperations = (chunks: Chunk.Chunk<Chunk.Chunk<number>>) =>
-    pipe(
-      chunks,
+    chunks.pipe(
       Chunk.flatMap(chunk => chunk),  // Flatten efficiently
       Chunk.dedupe,                   // Remove duplicates
       Chunk.sort((a, b) => a - b)     // Sort once at the end
@@ -1035,8 +1011,7 @@ const memoryEfficientPatterns = () => {
     data: Chunk.Chunk<A>,
     predicate: (a: A) => boolean
   ): Option.Option<A> =>
-    pipe(
-      data,
+    data.pipe(
       Chunk.filter(predicate),
       Chunk.head  // Terminates early due to lazy evaluation
     )
@@ -1078,7 +1053,7 @@ const chunkProcessingQueue = <A, B>(
       
       while (true) {
         const item = yield* Queue.take(inputQueue)
-        batch = pipe(Chunk.append(batch, item))
+        batch = Chunk.append(batch, item)
         
         if (Chunk.size(batch) >= batchSize) {
           const processed = yield* processor(batch)
@@ -1174,19 +1149,14 @@ const batchDatabaseInsert = <T>(
   batchSize: number = 1000
 ): Effect.Effect<void> =>
   Effect.gen(function* () {
-    const batches = pipe(
-      records,
+    const batches = records.pipe(
       chunk => {
         const size = Chunk.size(chunk)
         const numBatches = Math.ceil(size / batchSize)
         return Chunk.range(0, numBatches - 1).pipe(
-          Chunk.map(i => pipe(
-            Chunk.toReadonlyArray(
-              Chunk.take(
-                Chunk.drop(chunk, i * batchSize),
-                batchSize
-              )
-            )
+          Chunk.map(i => Chunk.drop(chunk, i * batchSize).pipe(
+            Chunk.take(batchSize),
+            Chunk.toReadonlyArray
           ))
         )
       }
@@ -1214,7 +1184,7 @@ const demonstrateLibraryIntegrations = () => {
   // Async iterator usage
   const processAsyncIterable = async () => {
     const asyncIterable = chunkToAsyncIterable(
-      pipe(Chunk.take(sampleData, 10)),
+      Chunk.take(sampleData, 10),
       100 // 100ms delay
     )
     
@@ -1247,8 +1217,8 @@ const chunkTestUtils = {
   
   // Test structural sharing (conceptual)
   testStructuralSharing: <A>(chunk: Chunk.Chunk<A>) => {
-    const filtered = pipe(Chunk.filter(chunk, () => true)) // Identity filter
-    const mapped = pipe(Chunk.map(chunk, x => x)) // Identity map
+    const filtered = Chunk.filter(chunk, () => true) // Identity filter
+    const mapped = Chunk.map(chunk, x => x) // Identity map
     
     // In a real implementation, these would share structure
     return {
@@ -1296,10 +1266,10 @@ const chunkTestSuite = () => {
   
   // Performance benchmarks
   const benchmarks = chunkTestUtils.benchmarkChunkOperations(testChunk, [
-    { name: 'map', op: c => pipe(Chunk.map(c, x => x * 2)) },
-    { name: 'filter', op: c => pipe(Chunk.filter(c, x => x % 2 === 0)) },
-    { name: 'take', op: c => pipe(Chunk.take(c, 100)) },
-    { name: 'sort', op: c => pipe(Chunk.sort(c, (a, b) => b - a)) }
+    { name: 'map', op: c => Chunk.map(c, x => x * 2) },
+    { name: 'filter', op: c => Chunk.filter(c, x => x % 2 === 0) },
+    { name: 'take', op: c => Chunk.take(c, 100) },
+    { name: 'sort', op: c => Chunk.sort(c, (a, b) => b - a) }
   ])
   
   console.log('Performance benchmarks:')
@@ -1313,15 +1283,15 @@ const chunkTestSuite = () => {
   const randomChunk = generateRandomChunk(100, () => Math.floor(Math.random() * 100))
   
   // Test: map preserves size
-  const mapped = pipe(Chunk.map(randomChunk, x => x * 2))
+  const mapped = Chunk.map(randomChunk, x => x * 2)
   console.log('Map preserves size:', Chunk.size(randomChunk) === Chunk.size(mapped))
   
   // Test: filter reduces or maintains size
-  const filtered = pipe(Chunk.filter(randomChunk, x => x > 50))
+  const filtered = Chunk.filter(randomChunk, x => x > 50)
   console.log('Filter reduces size:', Chunk.size(filtered) <= Chunk.size(randomChunk))
   
   // Test: take never exceeds original size
-  const taken = pipe(Chunk.take(randomChunk, 150))
+  const taken = Chunk.take(randomChunk, 150)
   console.log('Take respects bounds:', Chunk.size(taken) <= Chunk.size(randomChunk))
   
   return {
@@ -1344,8 +1314,7 @@ const mockChunkOperations = () => {
       Effect.succeed(generateRandomChunk(batchSize, () => Math.floor(Math.random() * 1000))),
     
     processBatch: (batch: Chunk.Chunk<number>) =>
-      Effect.succeed(pipe(
-        batch,
+      Effect.succeed(batch.pipe(
         Chunk.map(x => ({ original: x, processed: x * 2 + 1 }))
       ))
   }
@@ -1358,7 +1327,7 @@ const mockChunkOperations = () => {
     return {
       batchSize: Chunk.size(batch),
       processedSize: Chunk.size(processed),
-      sample: pipe(Chunk.toReadonlyArray(Chunk.take(processed, 3)))
+      sample: Chunk.toReadonlyArray(Chunk.take(processed, 3))
     }
   })
   

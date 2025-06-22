@@ -582,7 +582,7 @@ const ProdPathsLayer = Effect.gen(function* () {
     logs: "/var/log/app",
     temp: path.join(process.env.TMPDIR || "/tmp", "app")
   }
-}).pipe(Layer.effect(AppPaths))
+}), Layer.effect(AppPaths))
 ```
 
 ### Pattern 2: Path Validation Utilities

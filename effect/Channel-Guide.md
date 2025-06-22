@@ -141,9 +141,7 @@ const processedStream = Channel.toStream(processData)
 
 // Run the processing pipeline
 const result = Effect.gen(function* () {
-  const output = yield* processedStream.pipe(
-      Stream.runCollect
-    )
+  const output = yield* Stream.runCollect(processedStream)
   
   return Chunk.toReadonlyArray(output)
 })
@@ -1757,8 +1755,7 @@ const createResilientChannel = <A>(
     deadLetterQueue?: Queue.Queue<{ item: A; error: Error; timestamp: number }>
   }
 ) => {
-  let resilientChannel = pipe(
-    unreliableChannel,
+  let resilientChannel = unreliableChannel.pipe(
     withExponentialBackoff(config.maxRetries),
     withFallbacks(unreliableChannel, config.fallbacks)
   )

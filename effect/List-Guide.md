@@ -182,23 +182,17 @@ const products = List.make(
 )
 
 // Map transformation
-const productNames = pipe(
-  List.map((p) => p.name)(products)
-) // List("Laptop", "Coffee", "Book", "Phone")
+const productNames = List.map(products, (p) => p.name) // List("Laptop", "Coffee", "Book", "Phone")
 
 // Filter operation
-const electronics = pipe(
-  List.filter((p) => p.category === "Electronics")(products)
-) // List(laptop, phone)
+const electronics = List.filter(products, (p) => p.category === "Electronics") // List(laptop, phone)
 
 // FlatMap for nested transformations
-const expandedProducts = pipe(
-  List.flatMap((p) => 
-    List.make(
-      { ...p, variant: "Standard" },
-      { ...p, variant: "Premium", price: p.price * 1.5 }
-    )
-  )(products)
+const expandedProducts = List.flatMap(products, (p) => 
+  List.make(
+    { ...p, variant: "Standard" },
+    { ...p, variant: "Premium", price: p.price * 1.5 }
+  )
 )
 ```
 
@@ -502,8 +496,7 @@ class FileSystem {
       path: List.List<string>
     ): List.List<string> => {
       const currentPath = List.prepend(path, node.name)
-      const pathString = pipe(
-        currentPath,
+      const pathString = currentPath.pipe(
         List.reverse,
         List.join("/")
       )
@@ -1030,8 +1023,7 @@ const buildDependencyGraph = (
   
   return List.reduce(packages, { vertices, edges }, (graph, pkg) => {
     const deps = dependencies.get(pkg.name) ?? []
-    const depPackages = pipe(
-      List.fromIterable(deps),
+    const depPackages = List.fromIterable(deps).pipe(
       List.filterMap((depName) =>
         List.findFirst(packages, (p) => p.name === depName)
       )
