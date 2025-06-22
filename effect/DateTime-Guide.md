@@ -82,7 +82,7 @@ import { DateTime, Effect, pipe } from "effect"
 
 // Immutable date creation
 const now = DateTime.now
-const tomorrow = pipe(now, DateTime.addDays(1)) // Original unchanged
+const tomorrow = pipe(DateTime.addDays(now, 1)) // Original unchanged
 
 // Clear timezone handling
 const utcDate = DateTime.makeUtc(2024, 3, 15)
@@ -90,30 +90,26 @@ const localDate = DateTime.makeZoned(2024, 3, 15, "America/New_York")
 
 // Type-safe parsing
 const parsed = pipe(
-  "2024-03-15",
-  DateTime.parse({ format: "yyyy-MM-dd" })
+  DateTime.parse("2024-03-15", { format: "yyyy-MM-dd" })
 )
 
 // Intuitive arithmetic with edge case handling
 const jan31 = DateTime.make(2024, 1, 31)
-const feb29 = pipe(jan31, DateTime.addMonths(1)) // Correctly handles month end
+const feb29 = pipe(DateTime.addMonths(jan31, 1)) // Correctly handles month end
 
 // Built-in formatting
 const formatted = pipe(
-  now,
-  DateTime.format({ format: "yyyy-MM-dd HH:mm:ss" })
+  DateTime.format(now, { format: "yyyy-MM-dd HH:mm:ss" })
 )
 
 // First-class timezone support
 const converted = pipe(
-  utcDate,
-  DateTime.setZone("Asia/Tokyo")
+  DateTime.setZone(utcDate, "Asia/Tokyo")
 )
 
 // Type-safe comparisons
 const isInRange = pipe(
-  DateTime.now,
-  DateTime.between(startDate, endDate)
+  DateTime.between(DateTime.now, startDate, endDate)
 )
 ```
 
@@ -129,8 +125,8 @@ const dt: DateTime.DateTime = DateTime.now
 
 ```typescript
 const utc = DateTime.nowUtc
-const tokyo = pipe(utc, DateTime.setZone("Asia/Tokyo"))
-const newYork = pipe(utc, DateTime.setZone("America/New_York"))
+const tokyo = pipe(DateTime.setZone(utc, "Asia/Tokyo"))
+const newYork = pipe(DateTime.setZone(utc, "America/New_York"))
 ```
 
 **DateTime Parts**: Type-safe access to individual components with proper boundaries.
@@ -195,38 +191,35 @@ import { DateTime, Duration, pipe } from "effect"
 const baseDate = DateTime.make(2024, 3, 15, 10, 0, 0)
 
 // Adding/subtracting time units
-const tomorrow = pipe(baseDate, DateTime.addDays(1))
-const yesterday = pipe(baseDate, DateTime.addDays(-1))
-const nextWeek = pipe(baseDate, DateTime.addWeeks(1))
-const nextMonth = pipe(baseDate, DateTime.addMonths(1))
-const nextYear = pipe(baseDate, DateTime.addYears(1))
+const tomorrow = pipe(DateTime.addDays(baseDate, 1))
+const yesterday = pipe(DateTime.addDays(baseDate, -1))
+const nextWeek = pipe(DateTime.addWeeks(baseDate, 1))
+const nextMonth = pipe(DateTime.addMonths(baseDate, 1))
+const nextYear = pipe(DateTime.addYears(baseDate, 1))
 
 // Adding hours/minutes/seconds
 const later = pipe(
-  baseDate,
-  DateTime.addHours(2),
+  DateTime.addHours(baseDate, 2),
   DateTime.addMinutes(30),
   DateTime.addSeconds(45)
 )
 
 // Using Duration for precise additions
 const withDuration = pipe(
-  baseDate,
-  DateTime.addDuration(Duration.hours(2.5))
+  DateTime.addDuration(baseDate, Duration.hours(2.5))
 )
 
 // Month-end handling
 const jan31 = DateTime.make(2024, 1, 31)
-const feb29 = pipe(jan31, DateTime.addMonths(1))  // 2024-02-29 (leap year)
-const mar31 = pipe(feb29, DateTime.addMonths(1))  // 2024-03-31
+const feb29 = pipe(DateTime.addMonths(jan31, 1))  // 2024-02-29 (leap year)
+const mar31 = pipe(DateTime.addMonths(feb29, 1))  // 2024-03-31
 
 const jan31_2023 = DateTime.make(2023, 1, 31)
-const feb28_2023 = pipe(jan31_2023, DateTime.addMonths(1))  // 2023-02-28 (non-leap)
+const feb28_2023 = pipe(DateTime.addMonths(jan31_2023, 1))  // 2023-02-28 (non-leap)
 
 // Complex date calculations
 const endOfQuarter = pipe(
-  DateTime.now,
-  DateTime.startOfQuarter,
+  DateTime.startOfQuarter(DateTime.now),
   DateTime.addMonths(3),
   DateTime.addDays(-1)
 )
@@ -238,7 +231,7 @@ const addBusinessDays = (date: DateTime.DateTime, days: number): DateTime.DateTi
   const direction = days > 0 ? 1 : -1
   
   while (remaining > 0) {
-    current = pipe(current, DateTime.addDays(direction))
+    current = pipe(DateTime.addDays(current, direction))
     const dayOfWeek = DateTime.dayOfWeek(current)
     
     if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not weekend
@@ -264,15 +257,15 @@ const isEqual = DateTime.equals(date1, date3) // true
 const isDifferent = DateTime.equals(date1, date2) // false
 
 // Ordering comparisons
-const isBefore = pipe(date1, DateTime.lessThan(date2)) // true
-const isAfter = pipe(date2, DateTime.greaterThan(date1)) // true
-const isBeforeOrEqual = pipe(date1, DateTime.lessThanOrEqualTo(date3)) // true
+const isBefore = pipe(DateTime.lessThan(date1, date2)) // true
+const isAfter = pipe(DateTime.greaterThan(date2, date1)) // true
+const isBeforeOrEqual = pipe(DateTime.lessThanOrEqualTo(date1, date3)) // true
 
 // Range checks
 const now = DateTime.now
 const isInRange = pipe(
-  now,
   DateTime.between(
+    now,
     DateTime.make(2024, 1, 1),
     DateTime.make(2024, 12, 31)
   )
@@ -284,13 +277,11 @@ const latest = DateTime.max(date1, date2, date3) // date2
 
 // Distance calculations
 const daysBetween = pipe(
-  date2,
-  DateTime.distanceInDays(date1)
+  DateTime.distanceInDays(date2, date1)
 ) // 1
 
 const hoursBetween = pipe(
-  date2,
-  DateTime.distanceInHours(date1)
+  DateTime.distanceInHours(date2, date1)
 ) // 24
 
 // Getting date components
@@ -349,7 +340,7 @@ class EventScheduler {
     Effect.gen(function* () {
       const conflicts = yield* this.findConflicts(
         event.startTime,
-        pipe(event.startTime, DateTime.addDuration(event.duration)),
+        pipe(DateTime.addDuration(event.startTime, event.duration)),
         event.timezone
       )
       
@@ -381,8 +372,8 @@ class EventScheduler {
         
         // Check for overlap
         if (
-          pipe(start, DateTime.lessThan(eventEnd)) &&
-          pipe(end, DateTime.greaterThan(eventStart))
+          pipe(DateTime.lessThan(start, eventEnd)) &&
+          pipe(DateTime.greaterThan(end, eventStart))
         ) {
           conflicts.push(event)
         }
@@ -407,11 +398,11 @@ class EventScheduler {
       let count = 0
       
       while (
-        pipe(current, DateTime.lessThanOrEqualTo(rangeEnd)) &&
+        pipe(DateTime.lessThanOrEqualTo(current, rangeEnd)) &&
         (!event.recurrence.count || count < event.recurrence.count) &&
-        (!event.recurrence.until || pipe(current, DateTime.lessThanOrEqualTo(event.recurrence.until)))
+        (!event.recurrence.until || pipe(DateTime.lessThanOrEqualTo(current, event.recurrence.until)))
       ) {
-        if (pipe(current, DateTime.greaterThanOrEqualTo(rangeStart))) {
+        if (pipe(DateTime.greaterThanOrEqualTo(current, rangeStart))) {
           // Apply weekday/monthday filters
           const shouldInclude = yield* this.matchesRecurrenceRules(
             current,
@@ -460,13 +451,13 @@ class EventScheduler {
     Effect.sync(() => {
       switch (rule.frequency) {
         case "daily":
-          return pipe(current, DateTime.addDays(rule.interval))
+          return pipe(DateTime.addDays(current, rule.interval))
         case "weekly":
-          return pipe(current, DateTime.addWeeks(rule.interval))
+          return pipe(DateTime.addWeeks(current, rule.interval))
         case "monthly":
-          return pipe(current, DateTime.addMonths(rule.interval))
+          return pipe(DateTime.addMonths(current, rule.interval))
         case "yearly":
-          return pipe(current, DateTime.addYears(rule.interval))
+          return pipe(DateTime.addYears(current, rule.interval))
       }
     })
 
@@ -485,7 +476,7 @@ class EventScheduler {
         for (const occurrence of occurrences) {
           items.push({
             event,
-            startTime: pipe(occurrence, DateTime.setZone(timezone)),
+            startTime: pipe(DateTime.setZone(occurrence, timezone)),
             endTime: pipe(
               occurrence,
               DateTime.addDuration(event.duration),
@@ -497,7 +488,7 @@ class EventScheduler {
       
       // Sort by start time
       return items.sort((a, b) =>
-        pipe(a.startTime, DateTime.lessThan(b.startTime)) ? -1 : 1
+        pipe(DateTime.lessThan(a.startTime, b.startTime)) ? -1 : 1
       )
     })
 }
@@ -552,7 +543,7 @@ const schedulerExample = Effect.gen(function* () {
   // Get agenda for next week
   const agenda = yield* scheduler.getAgenda(
     DateTime.now,
-    pipe(DateTime.now, DateTime.addWeeks(1)),
+    pipe(DateTime.addWeeks(DateTime.now, 1)),
     "America/New_York"
   )
   
@@ -602,7 +593,7 @@ class MultiTimezoneDashboard {
       return yield* Effect.all(
         this.timezones.map((zone) =>
           Effect.sync(() => {
-            const zonedTime = pipe(now, DateTime.setZone(zone))
+            const zonedTime = pipe(DateTime.setZone(now, zone))
             const offset = DateTime.offsetFromUtc(zonedTime)
             
             return {
@@ -625,7 +616,7 @@ class MultiTimezoneDashboard {
       return yield* Effect.all(
         this.timezones.map((zone) =>
           Effect.sync(() => {
-            const localTime = pipe(meeting.utcTime, DateTime.setZone(zone))
+            const localTime = pipe(DateTime.setZone(meeting.utcTime, zone))
             const endTime = pipe(
               localTime,
               DateTime.addDuration(meeting.duration)
@@ -653,7 +644,7 @@ class MultiTimezoneDashboard {
       const candidates: DateTime.DateTime[] = []
       let current = constraints.earliestStart
       
-      while (pipe(current, DateTime.lessThan(constraints.latestStart))) {
+      while (pipe(DateTime.lessThan(current, constraints.latestStart))) {
         const isOptimal = yield* this.checkMeetingTime(
           current,
           duration,
@@ -664,7 +655,7 @@ class MultiTimezoneDashboard {
           candidates.push(current)
         }
         
-        current = pipe(current, DateTime.addMinutes(30))
+        current = pipe(DateTime.addMinutes(current, 30))
       }
       
       // Sort by optimization score
@@ -682,8 +673,8 @@ class MultiTimezoneDashboard {
   ): Effect.Effect<boolean> =>
     Effect.gen(function* () {
       for (const zone of constraints.requiredTimezones) {
-        const localStart = pipe(utcTime, DateTime.setZone(zone))
-        const localEnd = pipe(localStart, DateTime.addDuration(duration))
+        const localStart = pipe(DateTime.setZone(utcTime, zone))
+        const localEnd = pipe(DateTime.addDuration(localStart, duration))
         
         // Check business hours constraint
         if (
@@ -710,7 +701,7 @@ class MultiTimezoneDashboard {
     let score = 100
     
     for (const zone of this.timezones) {
-      const localStart = pipe(utcTime, DateTime.setZone(zone))
+      const localStart = pipe(DateTime.setZone(utcTime, zone))
       const hour = DateTime.hours(localStart)
       
       // Prefer morning meetings
@@ -743,7 +734,7 @@ class MultiTimezoneDashboard {
     zone: string
   ): number => {
     const utcDay = DateTime.day(utcTime)
-    const localDay = DateTime.day(pipe(utcTime, DateTime.setZone(zone)))
+    const localDay = DateTime.day(pipe(DateTime.setZone(utcTime, zone)))
     return localDay - utcDay
   }
 
@@ -803,8 +794,8 @@ const dashboardExample = Effect.gen(function* () {
   const optimal = yield* dashboard.findOptimalMeetingTime(
     Duration.hours(1),
     {
-      earliestStart: pipe(DateTime.nowUtc, DateTime.addDays(1)),
-      latestStart: pipe(DateTime.nowUtc, DateTime.addDays(2)),
+      earliestStart: pipe(DateTime.addDays(DateTime.nowUtc, 1)),
+      latestStart: pipe(DateTime.addDays(DateTime.nowUtc, 2)),
       requiredTimezones: ["America/New_York", "Europe/London", "Asia/Tokyo"],
       businessHoursOnly: false
     }
@@ -884,7 +875,7 @@ class USStockCalendar implements TradingCalendar {
     }
     
     // Market hours check (9:30 AM - 4:00 PM ET)
-    const et = pipe(date, DateTime.setZone("America/New_York"))
+    const et = pipe(DateTime.setZone(date, "America/New_York"))
     const hour = DateTime.hours(et)
     const minute = DateTime.minutes(et)
     const timeInMinutes = hour * 60 + minute
@@ -893,34 +884,34 @@ class USStockCalendar implements TradingCalendar {
   }
 
   nextTradingDay = (date: DateTime.DateTime): DateTime.DateTime => {
-    let next = pipe(date, DateTime.addDays(1))
+    let next = pipe(DateTime.addDays(date, 1))
     
     while (!this.isMarketOpen(next)) {
-      next = pipe(next, DateTime.addDays(1))
+      next = pipe(DateTime.addDays(next, 1))
     }
     
-    return pipe(next, DateTime.startOfDay)
+    return pipe(DateTime.startOfDay(next))
   }
 
   previousTradingDay = (date: DateTime.DateTime): DateTime.DateTime => {
-    let prev = pipe(date, DateTime.addDays(-1))
+    let prev = pipe(DateTime.addDays(date, -1))
     
     while (!this.isMarketOpen(prev)) {
-      prev = pipe(prev, DateTime.addDays(-1))
+      prev = pipe(DateTime.addDays(prev, -1))
     }
     
-    return pipe(prev, DateTime.startOfDay)
+    return pipe(DateTime.startOfDay(prev))
   }
 
   tradingDaysBetween = (start: DateTime.DateTime, end: DateTime.DateTime): number => {
     let count = 0
     let current = start
     
-    while (pipe(current, DateTime.lessThanOrEqualTo(end))) {
+    while (pipe(DateTime.lessThanOrEqualTo(current, end))) {
       if (this.isMarketOpen(current)) {
         count++
       }
-      current = pipe(current, DateTime.addDays(1))
+      current = pipe(DateTime.addDays(current, 1))
     }
     
     return count
@@ -988,9 +979,9 @@ class TimeSeriesAnalyzer {
         let startIndex: number
         if (useCalendarDays) {
           // Use calendar days
-          const startDate = pipe(endDate, DateTime.addDays(-periods))
+          const startDate = pipe(DateTime.addDays(endDate, -periods))
           startIndex = this.data.findIndex((d) =>
-            pipe(d.date, DateTime.greaterThanOrEqualTo(startDate))
+            pipe(DateTime.greaterThanOrEqualTo(d.date, startDate))
           )
         } else {
           // Use trading days
@@ -1014,8 +1005,8 @@ class TimeSeriesAnalyzer {
   calculateVWAP = (date: DateTime.DateTime): Option.Option<number> => {
     const dayData = this.data.filter((d) =>
       DateTime.equals(
-        pipe(d.date, DateTime.startOfDay),
-        pipe(date, DateTime.startOfDay)
+        pipe(DateTime.startOfDay(d.date)),
+        pipe(DateTime.startOfDay(date))
       )
     )
     
@@ -1098,7 +1089,7 @@ const timeSeriesExample = Effect.gen(function* () {
         })
       }
       
-      date = pipe(date, DateTime.addDays(1))
+      date = pipe(DateTime.addDays(date, 1))
     }
     
     return data
@@ -1353,8 +1344,8 @@ const Formatters = {
   compact: (date: DateTime.DateTime): string => {
     const now = DateTime.now
     const isToday = DateTime.equals(
-      pipe(date, DateTime.startOfDay),
-      pipe(now, DateTime.startOfDay)
+      pipe(DateTime.startOfDay(date)),
+      pipe(DateTime.startOfDay(now))
     )
     
     if (isToday) {
@@ -1400,13 +1391,13 @@ const TimezoneUtils = {
   
   // Get timezone offset for a date
   getOffset: (date: DateTime.DateTime, zone: string): number => {
-    const zoned = pipe(date, DateTime.setZone(zone))
+    const zoned = pipe(DateTime.setZone(date, zone))
     return DateTime.offsetFromUtc(zoned)
   },
   
   // Check if DST is active
   isDST: (date: DateTime.DateTime, zone: string): boolean => {
-    const zoned = pipe(date, DateTime.setZone(zone))
+    const zoned = pipe(DateTime.setZone(date, zone))
     return DateTime.isDST(zoned)
   },
   
@@ -1448,7 +1439,7 @@ const TimezoneUtils = {
   ): readonly ZonedTime[] =>
     zones.map((zone) => ({
       zone,
-      time: pipe(date, DateTime.setZone(zone)),
+      time: pipe(DateTime.setZone(date, zone)),
       offset: TimezoneUtils.getOffset(date, zone),
       isDST: TimezoneUtils.isDST(date, zone)
     })),
@@ -1472,7 +1463,7 @@ const TimezoneUtils = {
       )
       
       return targetZones.map((zone) => {
-        const converted = pipe(baseDate, DateTime.setZone(zone))
+        const converted = pipe(DateTime.setZone(baseDate, zone))
         return {
           zone,
           time: converted,
@@ -1547,8 +1538,8 @@ class DSTAwareScheduler {
     )
     
     // If target is in the past, move to next day
-    if (pipe(target, DateTime.lessThanOrEqualTo(from))) {
-      target = pipe(target, DateTime.addDays(1))
+    if (pipe(DateTime.lessThanOrEqualTo(target, from))) {
+      target = pipe(DateTime.addDays(target, 1))
     }
     
     // Check for DST transitions
@@ -1560,8 +1551,8 @@ class DSTAwareScheduler {
     for (const transition of transitions) {
       if (
         DateTime.equals(
-          pipe(transition.date, DateTime.startOfDay),
-          pipe(target, DateTime.startOfDay)
+          pipe(DateTime.startOfDay(transition.date)),
+          pipe(DateTime.startOfDay(target))
         )
       ) {
         // Adjust for DST transition
@@ -1569,7 +1560,7 @@ class DSTAwareScheduler {
           // Skip the non-existent hour
           const transitionHour = DateTime.hours(transition.date)
           if (hour === transitionHour) {
-            target = pipe(target, DateTime.addHours(1))
+            target = pipe(DateTime.addHours(target, 1))
           }
         }
         // Fall-back is handled automatically
@@ -1661,12 +1652,12 @@ const DateBoundaries = {
     end: DateTime.DateTime
   ): readonly DateTime.DateTime[] => {
     const dates: DateTime.DateTime[] = []
-    let current = pipe(start, DateTime.startOfDay)
-    const endDay = pipe(end, DateTime.startOfDay)
+    let current = pipe(DateTime.startOfDay(start))
+    const endDay = pipe(DateTime.startOfDay(end))
     
-    while (pipe(current, DateTime.lessThanOrEqualTo(endDay))) {
+    while (pipe(DateTime.lessThanOrEqualTo(current, endDay))) {
       dates.push(current)
-      current = pipe(current, DateTime.addDays(1))
+      current = pipe(DateTime.addDays(current, 1))
     }
     
     return dates
@@ -1681,12 +1672,12 @@ const DateBoundaries = {
     const ranges: DateRange[] = []
     let current = start
     
-    while (pipe(current, DateTime.lessThan(end))) {
+    while (pipe(DateTime.lessThan(current, end))) {
       let intervalEnd: DateTime.DateTime
       
       switch (intervalType) {
         case "day":
-          intervalEnd = pipe(current, DateTime.endOfDay)
+          intervalEnd = pipe(DateTime.endOfDay(current))
           break
         case "week":
           intervalEnd = DateBoundaries.endOfWeek(current)
@@ -1698,19 +1689,19 @@ const DateBoundaries = {
           intervalEnd = DateBoundaries.endOfQuarter(current)
           break
         case "year":
-          intervalEnd = pipe(current, DateTime.endOfYear)
+          intervalEnd = pipe(DateTime.endOfYear(current))
           break
       }
       
       // Don't exceed the end date
-      if (pipe(intervalEnd, DateTime.greaterThan(end))) {
+      if (pipe(DateTime.greaterThan(intervalEnd, end))) {
         intervalEnd = end
       }
       
       ranges.push({ start: current, end: intervalEnd })
       
       // Move to next interval
-      current = pipe(intervalEnd, DateTime.addMilliseconds(1))
+      current = pipe(DateTime.addMilliseconds(intervalEnd, 1))
     }
     
     return ranges
@@ -1726,15 +1717,15 @@ interface DateRange {
 class DateRangeOperations {
   // Check if ranges overlap
   static overlaps = (range1: DateRange, range2: DateRange): boolean =>
-    pipe(range1.start, DateTime.lessThan(range2.end)) &&
-    pipe(range2.start, DateTime.lessThan(range1.end))
+    pipe(DateTime.lessThan(range1.start, range2.end)) &&
+    pipe(DateTime.lessThan(range2.start, range1.end))
   
   // Merge overlapping ranges
   static merge = (ranges: readonly DateRange[]): readonly DateRange[] => {
     if (ranges.length === 0) return []
     
     const sorted = [...ranges].sort((a, b) =>
-      pipe(a.start, DateTime.lessThan(b.start)) ? -1 : 1
+      pipe(DateTime.lessThan(a.start, b.start)) ? -1 : 1
     )
     
     const merged: DateRange[] = [sorted[0]]
@@ -1763,24 +1754,24 @@ class DateRangeOperations {
     boundary: DateRange
   ): readonly DateRange[] => {
     const sorted = [...ranges].sort((a, b) =>
-      pipe(a.start, DateTime.lessThan(b.start)) ? -1 : 1
+      pipe(DateTime.lessThan(a.start, b.start)) ? -1 : 1
     )
     
     const gaps: DateRange[] = []
     let currentStart = boundary.start
     
     for (const range of sorted) {
-      if (pipe(currentStart, DateTime.lessThan(range.start))) {
+      if (pipe(DateTime.lessThan(currentStart, range.start))) {
         gaps.push({
           start: currentStart,
-          end: pipe(range.start, DateTime.addMilliseconds(-1))
+          end: pipe(DateTime.addMilliseconds(range.start, -1))
         })
       }
       
-      currentStart = pipe(range.end, DateTime.addMilliseconds(1))
+      currentStart = pipe(DateTime.addMilliseconds(range.end, 1))
     }
     
-    if (pipe(currentStart, DateTime.lessThan(boundary.end))) {
+    if (pipe(DateTime.lessThan(currentStart, boundary.end))) {
       gaps.push({
         start: currentStart,
         end: boundary.end
@@ -1805,11 +1796,11 @@ const availabilityExample = Effect.gen(function* () {
   const startDate = DateTime.make(2024, 3, 18)
   
   for (let i = 0; i < 5; i++) {
-    const date = pipe(startDate, DateTime.addDays(i))
+    const date = pipe(DateTime.addDays(startDate, i))
     if (DateTime.dayOfWeek(date) >= 1 && DateTime.dayOfWeek(date) <= 5) {
       businessHours.push({
-        start: pipe(date, DateTime.setTime(9, 0, 0)),
-        end: pipe(date, DateTime.setTime(17, 0, 0))
+        start: pipe(DateTime.setTime(date, 9, 0, 0)),
+        end: pipe(DateTime.setTime(date, 17, 0, 0))
       })
     }
   }
@@ -1841,7 +1832,7 @@ const availabilityExample = Effect.gen(function* () {
     console.log(`Available on ${DateTime.format(day.start, { format: "EEEE, MMM dd" })}:`)
     for (const slot of availableSlots) {
       const duration = DateRangeOperations.duration(slot)
-      if (pipe(duration, Duration.greaterThanOrEqualTo(Duration.minutes(30)))) {
+      if (pipe(Duration.greaterThanOrEqualTo(duration, Duration.minutes(30)))) {
         console.log(
           `  ${DateTime.format(slot.start, { format: "HH:mm" })} - ` +
           `${DateTime.format(slot.end, { format: "HH:mm" })} ` +
@@ -1883,7 +1874,7 @@ const DateTimeServiceLive = Layer.succeed(
   {
     now: Effect.sync(() => DateTime.now),
     nowUtc: Effect.sync(() => DateTime.nowUtc),
-    today: Effect.sync(() => pipe(DateTime.now, DateTime.startOfDay)),
+    today: Effect.sync(() => pipe(DateTime.startOfDay(DateTime.now))),
     parse: (input, format) =>
       pipe(
         format
@@ -1911,8 +1902,8 @@ const makeTestDateTimeService = (
     DateTimeService,
     {
       now: Effect.succeed(fixedTime),
-      nowUtc: Effect.succeed(pipe(fixedTime, DateTime.setZone("UTC"))),
-      today: Effect.succeed(pipe(fixedTime, DateTime.startOfDay)),
+      nowUtc: Effect.succeed(pipe(DateTime.setZone(fixedTime, "UTC"))),
+      today: Effect.succeed(pipe(DateTime.startOfDay(fixedTime))),
       parse: (input, format) =>
         pipe(
           format
@@ -1962,12 +1953,12 @@ const processExpiration = (expiryDate: DateTime.DateTime) =>
     const service = yield* DateTimeService
     const now = yield* service.now
     
-    if (pipe(expiryDate, DateTime.lessThan(now))) {
+    if (pipe(DateTime.lessThan(expiryDate, now))) {
       return { status: "expired", expiredFor: DateTime.distance(expiryDate, now) }
     }
     
     const daysUntilExpiry = Math.floor(
-      pipe(expiryDate, DateTime.distanceInDays(now))
+      pipe(DateTime.distanceInDays(expiryDate, now))
     )
     
     if (daysUntilExpiry <= 30) {
@@ -2088,16 +2079,16 @@ class ConfigurableBusinessCalendar implements BusinessCalendar {
         if (dayOfWeek !== rule.weekday) return false
         
         // Check if it's the last occurrence
-        const nextWeek = pipe(date, DateTime.addWeeks(1))
+        const nextWeek = pipe(DateTime.addWeeks(date, 1))
         return DateTime.month(nextWeek) !== rule.month
       }
       
       case "easter-based": {
         const easter = this.calculateEaster(year)
-        const targetDate = pipe(easter, DateTime.addDays(rule.daysFromEaster))
+        const targetDate = pipe(DateTime.addDays(easter, rule.daysFromEaster))
         return DateTime.equals(
-          pipe(date, DateTime.startOfDay),
-          pipe(targetDate, DateTime.startOfDay)
+          pipe(DateTime.startOfDay(date)),
+          pipe(DateTime.startOfDay(targetDate))
         )
       }
     }
@@ -2124,20 +2115,20 @@ class ConfigurableBusinessCalendar implements BusinessCalendar {
   }
   
   nextBusinessDay = (date: DateTime.DateTime): DateTime.DateTime => {
-    let next = pipe(date, DateTime.addDays(1))
+    let next = pipe(DateTime.addDays(date, 1))
     
     while (!this.isBusinessDay(next)) {
-      next = pipe(next, DateTime.addDays(1))
+      next = pipe(DateTime.addDays(next, 1))
     }
     
     return next
   }
   
   previousBusinessDay = (date: DateTime.DateTime): DateTime.DateTime => {
-    let prev = pipe(date, DateTime.addDays(-1))
+    let prev = pipe(DateTime.addDays(date, -1))
     
     while (!this.isBusinessDay(prev)) {
-      prev = pipe(prev, DateTime.addDays(-1))
+      prev = pipe(DateTime.addDays(prev, -1))
     }
     
     return prev
@@ -2149,7 +2140,7 @@ class ConfigurableBusinessCalendar implements BusinessCalendar {
     const direction = days > 0 ? 1 : -1
     
     while (remaining > 0) {
-      current = pipe(current, DateTime.addDays(direction))
+      current = pipe(DateTime.addDays(current, direction))
       
       if (this.isBusinessDay(current)) {
         remaining--
@@ -2161,14 +2152,14 @@ class ConfigurableBusinessCalendar implements BusinessCalendar {
   
   businessDaysBetween = (start: DateTime.DateTime, end: DateTime.DateTime): number => {
     let count = 0
-    let current = pipe(start, DateTime.startOfDay)
-    const endDay = pipe(end, DateTime.startOfDay)
+    let current = pipe(DateTime.startOfDay(start))
+    const endDay = pipe(DateTime.startOfDay(end))
     
-    while (pipe(current, DateTime.lessThanOrEqualTo(endDay))) {
+    while (pipe(DateTime.lessThanOrEqualTo(current, endDay))) {
       if (this.isBusinessDay(current)) {
         count++
       }
-      current = pipe(current, DateTime.addDays(1))
+      current = pipe(DateTime.addDays(current, 1))
     }
     
     return count
@@ -2234,14 +2225,14 @@ const DateTimeValidations = {
   // Future date only
   futureDate: Schema.filter(
     Schema.instanceOf(DateTime.DateTime),
-    (date) => pipe(date, DateTime.greaterThan(DateTime.now)),
+    (date) => pipe(DateTime.greaterThan(date, DateTime.now)),
     { message: "Date must be in the future" }
   ),
   
   // Past date only
   pastDate: Schema.filter(
     Schema.instanceOf(DateTime.DateTime),
-    (date) => pipe(date, DateTime.lessThan(DateTime.now)),
+    (date) => pipe(DateTime.lessThan(date, DateTime.now)),
     { message: "Date must be in the past" }
   ),
   
@@ -2249,7 +2240,7 @@ const DateTimeValidations = {
   dateInRange: (min: DateTime.DateTime, max: DateTime.DateTime) =>
     Schema.filter(
       Schema.instanceOf(DateTime.DateTime),
-      (date) => pipe(date, DateTime.between(min, max)),
+      (date) => pipe(DateTime.between(date, min, max)),
       { message: `Date must be between ${DateTime.toISO(min)} and ${DateTime.toISO(max)}` }
     ),
   
@@ -2288,7 +2279,7 @@ const AppointmentSchema = Schema.Struct({
     Schema.filter(
       (date) => {
         // Must be in the future
-        if (pipe(date, DateTime.lessThanOrEqualTo(DateTime.now))) {
+        if (pipe(DateTime.lessThanOrEqualTo(date, DateTime.now))) {
           return false
         }
         
@@ -2326,18 +2317,18 @@ const VacationRequestSchema = Schema.Struct({
   Schema.filter(
     ({ startDate, endDate }) => {
       // End must be after start
-      if (pipe(endDate, DateTime.lessThanOrEqualTo(startDate))) {
+      if (pipe(DateTime.lessThanOrEqualTo(endDate, startDate))) {
         return false
       }
       
       // Maximum 14 consecutive days
-      const days = pipe(endDate, DateTime.distanceInDays(startDate))
+      const days = pipe(DateTime.distanceInDays(endDate, startDate))
       if (days > 14) {
         return false
       }
       
       // Must be at least 2 weeks in advance
-      const daysUntilStart = pipe(startDate, DateTime.distanceInDays(DateTime.now))
+      const daysUntilStart = pipe(DateTime.distanceInDays(startDate, DateTime.now))
       if (daysUntilStart < 14) {
         return false
       }
@@ -2378,7 +2369,7 @@ const RecurringEventSchema = Schema.Struct({
     (event) => {
       // If endDate is provided, it must be after startDate
       if (event.endDate) {
-        return pipe(event.endDate, DateTime.greaterThan(event.startDate))
+        return pipe(DateTime.greaterThan(event.endDate, event.startDate))
       }
       return true
     },
@@ -2400,7 +2391,7 @@ const DateTimeScheduling = {
   dailyAt: (hour: number, minute: number, timezone = "UTC") =>
     Schedule.fixed(Duration.minutes(1)).pipe(
       Schedule.whileOutput(() => {
-        const now = pipe(DateTime.now, DateTime.setZone(timezone))
+        const now = pipe(DateTime.setZone(DateTime.now, timezone))
         const targetToday = DateTime.makeZoned(
           DateTime.year(now),
           DateTime.month(now),
@@ -2566,7 +2557,7 @@ const schedulingExample = Effect.gen(function* () {
     [1], // Monday
     { hour: 9, minute: 0 },
     Effect.gen(function* () {
-      const lastWeek = pipe(DateTime.now, DateTime.addWeeks(-1))
+      const lastWeek = pipe(DateTime.addWeeks(DateTime.now, -1))
       console.log(`Generating report for week of ${DateTime.format(lastWeek)}`)
       // Report generation logic
     })
@@ -2623,11 +2614,11 @@ const DateTimeTestUtils = {
       }
       
       // Override with fixed time
-      const fixed = pipe(dateTime, DateTime.setZone("UTC"))
+      const fixed = pipe(DateTime.setZone(dateTime, "UTC"))
       Object.assign(service, {
         now: Effect.succeed(dateTime),
         nowUtc: Effect.succeed(fixed),
-        today: Effect.succeed(pipe(dateTime, DateTime.startOfDay))
+        today: Effect.succeed(pipe(DateTime.startOfDay(dateTime)))
       })
       
       try {
@@ -2715,8 +2706,8 @@ describe("DateTime Operations", () => {
       const duringDST = DateTime.makeZoned(2024, 3, 10, 3, 30, 0, "America/New_York")
       
       // Convert to UTC
-      const beforeUTC = pipe(beforeDST, DateTime.setZone("UTC"))
-      const duringUTC = pipe(duringDST, DateTime.setZone("UTC"))
+      const beforeUTC = pipe(DateTime.setZone(beforeDST, "UTC"))
+      const duringUTC = pipe(DateTime.setZone(duringDST, "UTC"))
       
       // Should be 2 hours apart despite appearing 2.5 hours apart
       const actualDiff = pipe(
@@ -2752,8 +2743,8 @@ test("DateTime arithmetic properties", () => {
         
         expect(
           DateTime.equals(
-            pipe(date, DateTime.startOfDay),
-            pipe(roundTrip, DateTime.startOfDay)
+            pipe(DateTime.startOfDay(date)),
+            pipe(DateTime.startOfDay(roundTrip))
           )
         ).toBe(true)
         

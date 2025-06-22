@@ -633,6 +633,8 @@ const app = HttpRouter.empty.pipe(
 #### Route-Specific Middleware
 
 ```typescript
+import { pipe } from "effect"
+
 const requireAuth = (handler: HttpRouter.Route.Handler) =>
   Effect.gen(function* () {
     const user = yield* authenticateUser
@@ -652,10 +654,14 @@ const requireRole = (role: string) => (handler: HttpRouter.Route.Handler) =>
 
 const protectedRouter = HttpRouter.empty.pipe(
   HttpRouter.get("/admin/users", 
-    Effect.gen(function* () {
-      const users = yield* getAllUsers()
-      return users
-    }).pipe(requireAuth, requireRole("admin"))
+    pipe(
+      Effect.gen(function* () {
+        const users = yield* getAllUsers()
+        return users
+      }),
+      requireAuth,
+      requireRole("admin")
+    )
   ),
   HttpRouter.get("/profile",
     Effect.gen(function* () {

@@ -67,7 +67,7 @@ const result = processLargeDataset(millionNumbers) // Minimal memory overhead
 const nestedOperations = (datasets: Chunk.Chunk<Chunk.Chunk<number>>): Chunk.Chunk<number> =>
   pipe(
     datasets,
-    Chunk.flatMap(dataset => pipe(dataset, Chunk.map(x => x * 2))),
+    Chunk.flatMap(dataset => pipe(Chunk.map(dataset, x => x * 2))),
     Chunk.filter(x => x > 100),
     Chunk.take(500)
   )
@@ -336,8 +336,7 @@ const processAllProducts = Effect.gen(function* () {
         totalProducts: Chunk.size(products),
         inStockCount: pipe(Chunk.size(Chunk.filter(products, p => p.inStock))),
         averagePrice: pipe(
-          products,
-          Chunk.map(p => p.price),
+          Chunk.map(products, p => p.price),
           prices => Chunk.reduce(prices, 0, (sum, price) => sum + price) / Chunk.size(prices)
         ),
         categoryBreakdown: {
@@ -347,10 +346,12 @@ const processAllProducts = Effect.gen(function* () {
           home: Chunk.size(home)
         },
         topExpensive: pipe(
-          products,
-          Chunk.sort((a, b) => b.price - a.price),
-          Chunk.take(10),
-          Chunk.toReadonlyArray
+          Chunk.toReadonlyArray(
+            Chunk.take(
+              Chunk.sort(products, (a, b) => b.price - a.price),
+              10
+            )
+          )
         )
       }
     }
@@ -410,8 +411,7 @@ class SensorWindowProcessor {
     // Remove readings outside window
     const windowStart = reading.timestamp - this.windowSize
     const filteredWindow = pipe(
-      updatedWindow,
-      Chunk.filter(r => r.timestamp >= windowStart)
+      Chunk.filter(updatedWindow, r => r.timestamp >= windowStart)
     )
     
     this.windows.set(sensorId, filteredWindow)
@@ -539,9 +539,9 @@ import { Chunk, pipe } from "effect"
 const largeChunk = Chunk.range(1, 100_000)
 
 // Operations create new chunks but share structure
-const filtered = pipe(largeChunk, Chunk.filter(x => x % 2 === 0))
-const mapped = pipe(filtered, Chunk.map(x => x * 2))
-const taken = pipe(mapped, Chunk.take(1000))
+const filtered = pipe(Chunk.filter(largeChunk, x => x % 2 === 0))
+const mapped = pipe(Chunk.map(filtered, x => x * 2))
+const taken = pipe(Chunk.take(mapped, 1000))
 
 // Memory usage is much lower than copying arrays
 // Each operation reuses parts of the previous chunk
@@ -669,7 +669,7 @@ const processUntilCondition = <A, B>(
   
   for (const item of iterator) {
     const transformed = transform(item)
-    result = pipe(result, Chunk.append(transformed))
+    result = pipe(Chunk.append(result, transformed))
     
     if (stopCondition(transformed)) {
       break  // Early termination
@@ -717,8 +717,8 @@ const slidingWindow = <A>(
   
   return pipe(
     Chunk.range(0, size - windowSize),
-    Chunk.map(i => pipe(chunk, Chunk.drop(i), Chunk.take(windowSize))),
-    Chunk.reduce(windows, (acc, window) => pipe(acc, Chunk.append(window)))
+    Chunk.map(i => pipe(Chunk.take(Chunk.drop(chunk, i), windowSize))),
+    Chunk.reduce(windows, (acc, window) => pipe(Chunk.append(acc, window)))
   )
 }
 
@@ -752,7 +752,7 @@ const groupBy = <A, K>(
   Chunk.forEach(chunk, item => {
     const key = keyFn(item)
     const existing = groups.get(key) || Chunk.empty<A>()
-    groups.set(key, pipe(existing, Chunk.append(item)))
+    groups.set(key, pipe(Chunk.append(existing, item)))
   })
   
   return groups
@@ -795,11 +795,11 @@ const processInBatches = <A, B>(
     let remaining = data
     
     while (!Chunk.isEmpty(remaining)) {
-      const batch = pipe(remaining, Chunk.take(batchSize))
+      const batch = pipe(Chunk.take(remaining, batchSize))
       const processed = yield* processor(batch)
       
-      result = pipe(result, Chunk.appendAll(processed))
-      remaining = pipe(remaining, Chunk.drop(batchSize))
+      result = pipe(Chunk.appendAll(result, processed))
+      remaining = pipe(Chunk.drop(remaining, batchSize))
     }
     
     return result
@@ -891,9 +891,9 @@ const safeTransform = <A, B>(
   Chunk.forEach(chunk, item => {
     const result = transform(item)
     if (Either.isRight(result)) {
-      successes = pipe(successes, Chunk.append(result.right))
+      successes = pipe(Chunk.append(successes, result.right))
     } else {
-      errors = pipe(errors, Chunk.append(result.left))
+      errors = pipe(Chunk.append(errors, result.left))
     }
   })
   
@@ -1078,7 +1078,7 @@ const chunkProcessingQueue = <A, B>(
       
       while (true) {
         const item = yield* Queue.take(inputQueue)
-        batch = pipe(batch, Chunk.append(item))
+        batch = pipe(Chunk.append(batch, item))
         
         if (Chunk.size(batch) >= batchSize) {
           const processed = yield* processor(batch)
@@ -1181,10 +1181,12 @@ const batchDatabaseInsert = <T>(
         const numBatches = Math.ceil(size / batchSize)
         return Chunk.range(0, numBatches - 1).pipe(
           Chunk.map(i => pipe(
-            chunk,
-            Chunk.drop(i * batchSize),
-            Chunk.take(batchSize),
-            Chunk.toReadonlyArray
+            Chunk.toReadonlyArray(
+              Chunk.take(
+                Chunk.drop(chunk, i * batchSize),
+                batchSize
+              )
+            )
           ))
         )
       }
@@ -1212,7 +1214,7 @@ const demonstrateLibraryIntegrations = () => {
   // Async iterator usage
   const processAsyncIterable = async () => {
     const asyncIterable = chunkToAsyncIterable(
-      pipe(sampleData, Chunk.take(10)),
+      pipe(Chunk.take(sampleData, 10)),
       100 // 100ms delay
     )
     
@@ -1245,8 +1247,8 @@ const chunkTestUtils = {
   
   // Test structural sharing (conceptual)
   testStructuralSharing: <A>(chunk: Chunk.Chunk<A>) => {
-    const filtered = pipe(chunk, Chunk.filter(() => true)) // Identity filter
-    const mapped = pipe(chunk, Chunk.map(x => x)) // Identity map
+    const filtered = pipe(Chunk.filter(chunk, () => true)) // Identity filter
+    const mapped = pipe(Chunk.map(chunk, x => x)) // Identity map
     
     // In a real implementation, these would share structure
     return {
@@ -1294,10 +1296,10 @@ const chunkTestSuite = () => {
   
   // Performance benchmarks
   const benchmarks = chunkTestUtils.benchmarkChunkOperations(testChunk, [
-    { name: 'map', op: c => pipe(c, Chunk.map(x => x * 2)) },
-    { name: 'filter', op: c => pipe(c, Chunk.filter(x => x % 2 === 0)) },
-    { name: 'take', op: c => pipe(c, Chunk.take(100)) },
-    { name: 'sort', op: c => pipe(c, Chunk.sort((a, b) => b - a)) }
+    { name: 'map', op: c => pipe(Chunk.map(c, x => x * 2)) },
+    { name: 'filter', op: c => pipe(Chunk.filter(c, x => x % 2 === 0)) },
+    { name: 'take', op: c => pipe(Chunk.take(c, 100)) },
+    { name: 'sort', op: c => pipe(Chunk.sort(c, (a, b) => b - a)) }
   ])
   
   console.log('Performance benchmarks:')
@@ -1311,15 +1313,15 @@ const chunkTestSuite = () => {
   const randomChunk = generateRandomChunk(100, () => Math.floor(Math.random() * 100))
   
   // Test: map preserves size
-  const mapped = pipe(randomChunk, Chunk.map(x => x * 2))
+  const mapped = pipe(Chunk.map(randomChunk, x => x * 2))
   console.log('Map preserves size:', Chunk.size(randomChunk) === Chunk.size(mapped))
   
   // Test: filter reduces or maintains size
-  const filtered = pipe(randomChunk, Chunk.filter(x => x > 50))
+  const filtered = pipe(Chunk.filter(randomChunk, x => x > 50))
   console.log('Filter reduces size:', Chunk.size(filtered) <= Chunk.size(randomChunk))
   
   // Test: take never exceeds original size
-  const taken = pipe(randomChunk, Chunk.take(150))
+  const taken = pipe(Chunk.take(randomChunk, 150))
   console.log('Take respects bounds:', Chunk.size(taken) <= Chunk.size(randomChunk))
   
   return {
@@ -1356,7 +1358,7 @@ const mockChunkOperations = () => {
     return {
       batchSize: Chunk.size(batch),
       processedSize: Chunk.size(processed),
-      sample: pipe(processed, Chunk.take(3), Chunk.toReadonlyArray)
+      sample: pipe(Chunk.toReadonlyArray(Chunk.take(processed, 3)))
     }
   })
   

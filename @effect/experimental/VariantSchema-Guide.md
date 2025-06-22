@@ -425,6 +425,8 @@ const FormPersisted = extract(ContactForm, "persisted")   // After database save
 #### Basic fieldEvolve Usage
 
 ```typescript
+import { pipe } from "effect"
+
 const { Struct, Field, fieldEvolve } = VariantSchema.make({
   variants: ["draft", "published"] as const,
   defaultVariant: "published"
@@ -438,7 +440,7 @@ const titleField = Field({
 
 // Transform the field - make published variant required with min length
 const evolvedTitleField = fieldEvolve(titleField, {
-  published: (schema) => Schema.pipe(schema, Schema.minLength(1)),
+  published: (schema) => pipe(Schema.minLength(schema, 1)),
 })
 
 // Result: Field({
@@ -450,6 +452,8 @@ const evolvedTitleField = fieldEvolve(titleField, {
 #### Real-World fieldEvolve Example: Adding Validation
 
 ```typescript
+import { pipe } from "effect"
+
 const BaseUser = Struct({
   email: Field({
     input: Schema.string,
@@ -466,12 +470,12 @@ const BaseUser = Struct({
 // Add validation rules to all "validated" and "persisted" variants
 const ValidatedUser = Struct({
   email: fieldEvolve(BaseUser.schemas.email, {
-    validated: (schema) => Schema.pipe(schema, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    persisted: (schema) => Schema.pipe(schema, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    validated: (schema) => pipe(Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    persisted: (schema) => pipe(Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
   }),
   age: fieldEvolve(BaseUser.schemas.age, {
-    validated: (schema) => Schema.pipe(schema, Schema.int(), Schema.between(0, 150)),
-    persisted: (schema) => Schema.pipe(schema, Schema.int(), Schema.between(0, 150)),
+    validated: (schema) => pipe(Schema.int(schema), Schema.between(0, 150)),
+    persisted: (schema) => pipe(Schema.int(schema), Schema.between(0, 150)),
   }),
 })
 ```
@@ -479,6 +483,8 @@ const ValidatedUser = Struct({
 #### Advanced fieldEvolve: Conditional Transformations
 
 ```typescript
+import { pipe } from "effect"
+
 // Helper function to add validation only to specific variants
 const addValidation = <T extends Field<any>>(
   field: T,
@@ -499,7 +505,7 @@ const User = Struct({
       published: Schema.string,
     }),
     ["published"],
-    (schema) => Schema.pipe(schema, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/))
+    (schema) => pipe(Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/))
   ),
 })
 ```

@@ -1006,10 +1006,7 @@ export class HierarchicalStorage {
 
   // Create nested namespaces
   createNamespace(...path: string[]) {
-    return pipe(
-      this.root,
-      (store) => path.reduce((s, segment) => prefix(s, segment), store)
-    )
+    return path.reduce((s, segment) => prefix(s, segment), this.root)
   }
 
   // Example: Organization > Project > Environment
@@ -1250,10 +1247,9 @@ export const createCounter = (key: string) => {
       const value = yield* kv.get(key)
       
       return pipe(
-        value,
-        Option.map((v) => parseInt(v, 10)),
+        Option.map((v: string) => parseInt(v, 10)),
         Option.getOrElse(() => 0)
-      )
+      )(value)
     })
   
   const reset = () =>

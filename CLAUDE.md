@@ -405,7 +405,7 @@ const formatUserNames = getUsers().pipe(
 )
 ```
 
-### Decision Matrix
+#### Decision Matrix
 
 | Context             | Syntax Choice       | Reasoning                                       |
 |---------------------|---------------------|-------------------------------------------------|
@@ -418,7 +418,52 @@ const formatUserNames = getUsers().pipe(
 | Control Flow        | Effect.gen + yield* | Conditionals, loops, complex branching          |
 | Function Factories  | Effect.gen + yield* | Building functions with dependencies            |
 
-### Best Practices for Documentation
+
+### Pipe() Function Standards/Rules
+NOTE: this is the imported { pipe } from 'effect' and not effect.pipe
+use pipe() consistently:
+
+#### Rule: Pipe Value-First to Function-First
+Prefer function-first  `pipe(fn1(value), fn2)` patterns compared to value-firt `pipe(value, fn1, fn2)` 
+
+```typescript
+// ❌ BAD (value-first):
+const result = pipe(
+  numbers,
+  Array.filter(n => n % 2 === 0),
+  Array.map(n => n * n),
+  Array.take(3)
+)
+
+// ✅ GOOD (function-first):
+const result = pipe(
+  Array.filter(numbers, n => n % 2 === 0),
+  Array.map(n => n * n),
+  Array.take(3)
+)
+```
+
+### Import Rules/Standards
+
+#### Rule: Import Alias Standardization
+Update single-letter module aliases for Array and Function to Arr and Fn 
+
+```typescript
+// ❌ BAD:
+import { Array as A, Function as F } from "effect"
+
+// ✅ GOOD:
+import { Array as Arr, Function as Fn } from "effect"
+```
+
+**Standard Aliases:**
+- `Array as A` → `Array as Arr`
+- `Function as F` → `Function as Fn`
+
+### Do Simulation/Notation Syntax Rules/Standards
+NEVER EVER USE DO SIMULATION/NOTATION SYNTAX OR APIS
+
+## Best Practices for Documentation
 
 1. **Start with Business Logic**: Use Effect.gen + yield* for the core domain logic
 2. **Compose with .pipe**: Add cross-cutting concerns (tracing, error handling) using .pipe
@@ -440,58 +485,4 @@ Before publishing, ensure your guide includes:
 - [ ] Progressive complexity in examples
 - [ ] Consistent code style and naming
 - [ ] Runnable code examples
-- [ ] **Effect.gen + yield* used for business logic**
-- [ ] **.pipe used for post-processing and composition**
-- [ ] **Hybrid pattern consistently applied throughout**
-
-# Code Refactoring Standards
-
-## Pipe Function Refactoring Rules
-
-When refactoring Effect guides, apply these pipe transformation rules consistently:
-
-### Rule 1: Pipe Value-First to Function-First
-Convert `pipe(value, fn1, fn2)` patterns to `pipe(fn1(value), fn2)`:
-
-```typescript
-// BEFORE (value-first):
-const result = pipe(
-  numbers,
-  Array.filter(n => n % 2 === 0),
-  Array.map(n => n * n),
-  Array.take(3)
-)
-
-// AFTER (function-first):
-const result = pipe(
-  Array.filter(numbers, n => n % 2 === 0),
-  Array.map(n => n * n),
-  Array.take(3)
-)
-```
-
-### Rule 2: Import Alias Standardization
-Update single-letter module aliases to descriptive names:
-
-```typescript
-// BEFORE:
-import { Array as A, Function as F } from "effect"
-
-// AFTER:
-import { Array as Arr, Function as Fn } from "effect"
-```
-
-**Standard Aliases:**
-- `Array as A` → `Array as Arr`
-- `Function as F` → `Function as Fn`
-
-### Rule 3: Update All References
-When changing import aliases, update ALL usage throughout the file:
-- `A.filter` → `Arr.filter`
-- `F.pipe` → `Fn.pipe`
-
-### Rule 4: Maintain Functionality
-- Ensure pipe transformations preserve exact same behavior
-- Keep all TypeScript types intact
-- Preserve all comments and explanations
-- Maintain code block syntax highlighting
+- [ ] **Effect-TS Syntax Guidelines in CLAUDE.md have been consistently followed**

@@ -1066,7 +1066,7 @@ Option.match(algorithms.topologicalSort(), {
   onNone: () => console.log("Circular dependency detected!"),
   onSome: (order) => {
     console.log("Installation order:", 
-      pipe(order, List.map((p) => p.name), List.toArray)
+      pipe(List.map(order, (p) => p.name), List.toArray)
     )
   }
 })
@@ -1339,14 +1339,14 @@ const numbers = List.range(1, 20)
 // Sliding windows
 const windows = slidingWindow(numbers, 3)
 console.log("Sliding windows:", 
-  pipe(windows, List.map(List.toArray), List.toArray)
+  pipe(List.map(windows, List.toArray), List.toArray)
 ) // [[1,2,3], [2,3,4], [3,4,5], ...]
 
 // Group consecutive
 const consecutive = List.make(1, 1, 2, 2, 2, 3, 1, 1)
 const groups = groupConsecutive(consecutive, (a, b) => a === b)
 console.log("Grouped:", 
-  pipe(groups, List.map(List.toArray), List.toArray)
+  pipe(List.map(groups, List.toArray), List.toArray)
 ) // [[1,1], [2,2,2], [3], [1,1]]
 
 // Multi-partition
@@ -1851,8 +1851,8 @@ describe("List Laws", () => {
           const g = (x: number) => x + 1
           
           return Equal.equals(
-            pipe(list, List.map(f), List.map(g)),
-            pipe(list, List.map((x) => g(f(x))))
+            pipe(List.map(list, f), List.map(g)),
+            pipe(List.map(list, (x) => g(f(x))))
           )
         }
       )

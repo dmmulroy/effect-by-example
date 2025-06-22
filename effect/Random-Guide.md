@@ -455,7 +455,7 @@ const generateOrder = (userId: string) =>
 Running probabilistic simulations with controlled randomness:
 
 ```typescript
-import { Effect, Random, Array as A, Number as N } from "effect"
+import { Effect, Random, Array as Arr, Number as N } from "effect"
 
 // Stock price simulation using Geometric Brownian Motion
 interface StockSimulationParams {

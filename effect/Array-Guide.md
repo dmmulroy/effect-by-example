@@ -449,16 +449,28 @@ const processUserData = (rawData: readonly RawUserData[]): DataProcessingResult 
   const results = pipe(
     Arr.map(rawData, user => {
       const processed = pipe(
-        Either.Do,
-        Either.bind("email", () => validateEmail(user.email)),
-        Either.bind("age", () => parseAge(user.age)),
-        Either.bind("purchaseHistory", () => parsePurchaseHistory(user.purchaseHistory)),
-        Either.bind("registrationDate", () => {
-          const date = new Date(user.registrationDate)
-          return isNaN(date.getTime()) 
-            ? Either.left("Invalid registration date")
-            : Either.right(date)
-        }),
+        validateEmail(user.email),
+        Either.flatMap(email =>
+          pipe(
+            parseAge(user.age),
+            Either.flatMap(age =>
+              pipe(
+                parsePurchaseHistory(user.purchaseHistory),
+                Either.flatMap(purchaseHistory => {
+                  const date = new Date(user.registrationDate)
+                  const registrationDate = isNaN(date.getTime()) 
+                    ? Either.left("Invalid registration date")
+                    : Either.right(date)
+                  
+                  return pipe(
+                    registrationDate,
+                    Either.map(registrationDate => ({ email, age, purchaseHistory, registrationDate }))
+                  )
+                })
+              )
+            )
+          )
+        ),
         Either.map(({ email, age, purchaseHistory, registrationDate }) => {
           const totalSpent = Arr.reduce(purchaseHistory, 0, (sum, amount) => sum + amount)
           const purchaseCount = purchaseHistory.length
@@ -1749,7 +1761,7 @@ describe("Array Operations", () => {
   // Property-based tests
   test("flatMap followed by flatten is identity", () => {
     const input = [[1, 2], [3, 4], [5]]
-    const result1 = pipe(input, Arr.flatMap(x => x))
+    const result1 = pipe(Arr.flatMap(input, x => x))
     const result2 = Arr.flatten(input)
     expect(isEqualArray(result1, result2)).toBe(true)
   })

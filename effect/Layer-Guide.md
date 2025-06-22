@@ -358,21 +358,18 @@ const UserRepositoryLive = Layer.effect(
     
     return {
       create: (data) =>
-        Effect.Do.pipe(
-          Effect.bind("id", () => Effect.sync(() => generateId())),
-          Effect.bind("now", () => Effect.sync(() => new Date())),
-          Effect.flatMap(({ id, now }) =>
-            db.execute<User>(
-              `INSERT INTO users (id, email, name, created_at) 
-               VALUES (?, ?, ?, ?) 
-               RETURNING *`,
-              [id, data.email, data.name, now]
-            )
-          ),
-          Effect.tap((user) => 
-            logger.info(`User created: ${user.id}`)
+        Effect.gen(function* () {
+          const id = yield* Effect.sync(() => generateId())
+          const now = yield* Effect.sync(() => new Date())
+          const user = yield* db.execute<User>(
+            `INSERT INTO users (id, email, name, created_at) 
+             VALUES (?, ?, ?, ?) 
+             RETURNING *`,
+            [id, data.email, data.name, now]
           )
-        ),
+          yield* logger.info(`User created: ${user.id}`)
+          return user
+        }),
         
       findById: (id) =>
         db.execute<User>(

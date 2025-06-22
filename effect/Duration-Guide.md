@@ -88,8 +88,7 @@ console.log(Duration.format(sessionDuration)) // "1 hour 30 minutes"
 
 // Integration with Effect operations
 const withTimeout = pipe(
-  Effect.sleep(Duration.seconds(5)),
-  Effect.timeout(Duration.seconds(3))
+  Effect.timeout(Effect.sleep(Duration.seconds(5)), Duration.seconds(3))
 )
 ```
 
@@ -160,8 +159,7 @@ const totalTime = Duration.add(Duration.minutes(30), Duration.seconds(45)) // 30
 
 // Chaining additions
 const accumulated = pipe(
-  Duration.add(Duration.hours(1), Duration.minutes(30))
-).pipe(
+  Duration.add(Duration.hours(1), Duration.minutes(30)),
   Duration.add(Duration.seconds(15))
 ) // 1 hour 30 minutes 15 seconds
 
@@ -278,8 +276,8 @@ const makeApiCall = (url: string) =>
 // Retry with exponential backoff on rate limit
 const apiCallWithRetry = (url: string) =>
   pipe(
-    makeApiCall(url),
     Effect.retry(
+      makeApiCall(url),
       Schedule.exponential(Duration.seconds(1), 2).pipe(
         Schedule.either(
           Schedule.recurs(5) // Max 5 retries
@@ -485,12 +483,10 @@ const makePerformanceMonitor = (): Effect.Effect<PerformanceMonitor> =>
     
     const calculateMetrics = (durations: Chunk.Chunk<Duration.Duration>): PerformanceMetrics => {
       const sorted = pipe(
-        Chunk.toArray(durations)
-      ).pipe(
+        Chunk.toArray(durations),
         (arr) => arr.sort((a, b) => 
           Number(Duration.toNanos(a) - Duration.toNanos(b))
-        )
-      ).pipe(
+        ),
         Chunk.fromIterable
       )
       
@@ -892,8 +888,7 @@ const makeDeadline = (duration: Duration.Duration): Effect.Effect<Deadline> =>
         }
         
         return yield* pipe(
-          Effect.timeout(effect, timeLeft)
-        ).pipe(
+          Effect.timeout(effect, timeLeft),
           Effect.catchTag("TimeoutException", () => fallback)
         )
       })
@@ -998,8 +993,7 @@ const resilientApiCall = <A>(
   }
   
   return pipe(
-    Effect.retry(operation, schedules[strategy])
-  ).pipe(
+    Effect.retry(operation, schedules[strategy]),
     Effect.timeout(Duration.minutes(5))
   )
 }
@@ -1077,8 +1071,7 @@ describe("Duration-based operations", () => {
   test("timeout behavior", () =>
     Effect.gen(function* () {
       const fiber = yield* pipe(
-        Effect.sleep(Duration.seconds(10)),
-        Effect.timeout(Duration.seconds(5)),
+        Effect.timeout(Effect.sleep(Duration.seconds(10)), Duration.seconds(5)),
         Effect.fork
       )
       
@@ -1111,8 +1104,8 @@ describe("Duration-based operations", () => {
       })
       
       const fiber = yield* pipe(
-        operation,
         Effect.retry(
+          operation,
           Schedule.exponential(Duration.seconds(1), 2)
         ),
         Effect.fork

@@ -221,8 +221,7 @@ yield* Effect.sleep(Duration.seconds(5))
 
 // Timeout operations
 yield* pipe(
-  longRunningOperation,
-  Effect.timeout(Duration.minutes(1))
+  Effect.timeout(longRunningOperation, Duration.minutes(1))
 )
 ```
 
@@ -332,8 +331,7 @@ const sleepWithTimeout = (
   timeoutDuration: Duration.Duration
 ) =>
   pipe(
-    Effect.sleep(sleepDuration),
-    Effect.timeout(timeoutDuration),
+    Effect.timeout(Effect.sleep(sleepDuration), timeoutDuration),
     Effect.catchTag("TimeoutException", () =>
       Effect.succeed("Timed out!")
     )
@@ -1372,8 +1370,7 @@ const advancedSchedulingExample = Effect.gen(function* () {
   })
   
   const businessSchedule = pipe(
-    TimeScheduler.every(Duration.seconds(30)),
-    TimeScheduler.businessHours
+    TimeScheduler.businessHours(TimeScheduler.every(Duration.seconds(30)))
   )
   
   // Task with exponential backoff on failure
@@ -1989,8 +1986,7 @@ const TimeServiceLive = Layer.succeed(
       duration: Duration.Duration
     ) =>
       pipe(
-        effect,
-        Effect.timeout(duration),
+        Effect.timeout(effect, duration),
         Effect.catchTag("TimeoutException", () =>
           Effect.fail(new TimeoutError(duration))
         )
@@ -2567,8 +2563,8 @@ describe("Clock Integration Tests", () => {
       const startTime = yield* Clock.currentTimeMillis
       
       const result = yield* pipe(
-        operation,
         Effect.retry(
+          operation,
           Schedule.exponential(Duration.seconds(1), 2).pipe(
             Schedule.intersect(Schedule.recurs(3))
           )
