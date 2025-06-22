@@ -19,31 +19,31 @@ Consider a typical user model in an application:
 ```typescript
 // Traditional approach - multiple separate schemas
 const UserInsert = Schema.Struct({
-  name: Schema.string,
-  email: Schema.string,
+  name: Schema.String,
+  email: Schema.String,
   // No id or timestamps - these are generated
 })
 
 const UserSelect = Schema.Struct({
-  id: Schema.string,
-  name: Schema.string,
-  email: Schema.string,
+  id: Schema.String,
+  name: Schema.String,
+  email: Schema.String,
   createdAt: Schema.Date,
   updatedAt: Schema.Date,
 })
 
 const UserUpdate = Schema.Struct({
-  id: Schema.string,
-  name: Schema.optional(Schema.string),
-  email: Schema.optional(Schema.string),
+  id: Schema.String,
+  name: Schema.optional(Schema.String),
+  email: Schema.optional(Schema.String),
   updatedAt: Schema.Date,
   // No createdAt - it doesn't change
 })
 
 const UserJson = Schema.Struct({
-  id: Schema.string,
-  name: Schema.string,
-  email: Schema.string,
+  id: Schema.String,
+  name: Schema.String,
+  email: Schema.String,
   createdAt: Schema.DateTimeUtc,
   updatedAt: Schema.DateTimeUtc,
   // Dates formatted for JSON
@@ -71,21 +71,21 @@ const { Struct, Field, extract } = VariantSchema.make({
 // Define the User schema once with variant-aware fields
 const User = Struct({
   id: Field({
-    select: Schema.string,
-    json: Schema.string,
+    select: Schema.String,
+    json: Schema.String,
     // id is auto-generated, not present in insert/update
   }),
   name: Field({
-    insert: Schema.string,
-    select: Schema.string,
-    update: Schema.optional(Schema.string),
-    json: Schema.string,
+    insert: Schema.String,
+    select: Schema.String,
+    update: Schema.optional(Schema.String),
+    json: Schema.String,
   }),
   email: Field({
-    insert: Schema.string,
-    select: Schema.string,
-    update: Schema.optional(Schema.string),
-    json: Schema.string,
+    insert: Schema.String,
+    select: Schema.String,
+    update: Schema.optional(Schema.String),
+    json: Schema.String,
   }),
   createdAt: Field({
     select: Schema.Date,
@@ -137,19 +137,19 @@ const { Struct, Field, FieldOnly, FieldExcept, extract } = VariantSchema.make({
 ```typescript
 const Article = Struct({
   id: Field({
-    published: Schema.string,
-    archived: Schema.string,
+    published: Schema.String,
+    archived: Schema.String,
     // id not present in draft (not yet saved)
   }),
   title: Field({
-    draft: Schema.string,
-    published: Schema.string,
-    archived: Schema.string,
+    draft: Schema.String,
+    published: Schema.String,
+    archived: Schema.String,
   }),
   content: Field({
-    draft: Schema.string,
-    published: Schema.string,
-    archived: Schema.string,
+    draft: Schema.String,
+    published: Schema.String,
+    archived: Schema.String,
   }),
   publishedAt: Field({
     published: Schema.Date,
@@ -174,19 +174,19 @@ These utilities help you create fields that are present only in specific variant
 
 ```typescript
 const Product = Struct({
-  id: FieldOnly("published", "archived")(Schema.string),
+  id: FieldOnly("published", "archived")(Schema.String),
   name: Field({
-    draft: Schema.string,
-    published: Schema.string,
-    archived: Schema.string,
+    draft: Schema.String,
+    published: Schema.String,
+    archived: Schema.String,
   }),
   price: Field({
-    draft: Schema.number,
-    published: Schema.number,
-    archived: Schema.number,
+    draft: Schema.Number,
+    published: Schema.Number,
+    archived: Schema.Number,
   }),
-  internalNotes: FieldOnly("draft")(Schema.string),
-  publicDescription: FieldExcept("draft")(Schema.string),
+  internalNotes: FieldOnly("draft")(Schema.String),
+  publicDescription: FieldExcept("draft")(Schema.String),
 })
 ```
 
@@ -240,47 +240,47 @@ const Sensitive = <T extends Schema.Schema.All>(schema: T) => Field({
 
 // Define a comprehensive user model
 const User = Struct({
-  id: Generated(Schema.string),
+  id: Generated(Schema.String),
   email: Field({
-    insert: Schema.string,
-    select: Schema.string,
-    update: Schema.optional(Schema.string),
-    json: Schema.string,
-    jsonCreate: Schema.string,
-    jsonUpdate: Schema.string,
+    insert: Schema.String,
+    select: Schema.String,
+    update: Schema.optional(Schema.String),
+    json: Schema.String,
+    jsonCreate: Schema.String,
+    jsonUpdate: Schema.String,
   }),
-  passwordHash: Sensitive(Schema.string),
+  passwordHash: Sensitive(Schema.String),
   firstName: Field({
-    insert: Schema.string,
-    select: Schema.string,
-    update: Schema.optional(Schema.string),
-    json: Schema.string,
-    jsonCreate: Schema.string,
-    jsonUpdate: Schema.string,
+    insert: Schema.String,
+    select: Schema.String,
+    update: Schema.optional(Schema.String),
+    json: Schema.String,
+    jsonCreate: Schema.String,
+    jsonUpdate: Schema.String,
   }),
   lastName: Field({
-    insert: Schema.string,
-    select: Schema.string,
-    update: Schema.optional(Schema.string),
-    json: Schema.string,
-    jsonCreate: Schema.string,
-    jsonUpdate: Schema.string,
+    insert: Schema.String,
+    select: Schema.String,
+    update: Schema.optional(Schema.String),
+    json: Schema.String,
+    jsonCreate: Schema.String,
+    jsonUpdate: Schema.String,
   }),
   role: Field({
-    insert: Schema.literal("user"),
-    select: Schema.union(Schema.literal("user"), Schema.literal("admin")),
-    update: Schema.optional(Schema.union(Schema.literal("user"), Schema.literal("admin"))),
-    json: Schema.union(Schema.literal("user"), Schema.literal("admin")),
-    jsonCreate: Schema.literal("user"),
-    jsonUpdate: Schema.union(Schema.literal("user"), Schema.literal("admin")),
+    insert: Schema.Literal("user"),
+    select: Schema.Union(Schema.Literal("user"), Schema.Literal("admin")),
+    update: Schema.optional(Schema.Union(Schema.Literal("user"), Schema.Literal("admin"))),
+    json: Schema.Union(Schema.Literal("user"), Schema.Literal("admin")),
+    jsonCreate: Schema.Literal("user"),
+    jsonUpdate: Schema.Union(Schema.Literal("user"), Schema.Literal("admin")),
   }),
   isEmailVerified: Field({
-    insert: Schema.literal(false),
-    select: Schema.boolean,
-    update: Schema.optional(Schema.boolean),
-    json: Schema.boolean,
-    jsonCreate: Schema.literal(false),
-    jsonUpdate: Schema.boolean,
+    insert: Schema.Literal(false),
+    select: Schema.Boolean,
+    update: Schema.optional(Schema.Boolean),
+    json: Schema.Boolean,
+    jsonCreate: Schema.Literal(false),
+    jsonUpdate: Schema.Boolean,
   }),
   createdAt: DateTimeInsert,
   updatedAt: DateTimeUpdate,
@@ -315,31 +315,31 @@ const { Struct, Field, extract } = VariantSchema.make({
 
 const UserProfile = Struct({
   id: Field({
-    internal: Schema.string,
-    public: Schema.string,
-    admin: Schema.string,
-    minimal: Schema.string,
+    internal: Schema.String,
+    public: Schema.String,
+    admin: Schema.String,
+    minimal: Schema.String,
   }),
   username: Field({
-    internal: Schema.string,
-    public: Schema.string,
-    admin: Schema.string,
-    minimal: Schema.string,
+    internal: Schema.String,
+    public: Schema.String,
+    admin: Schema.String,
+    minimal: Schema.String,
   }),
   email: Field({
-    internal: Schema.string,
-    admin: Schema.string,
+    internal: Schema.String,
+    admin: Schema.String,
     // Email not exposed in public/minimal views
   }),
   fullName: Field({
-    internal: Schema.string,
-    public: Schema.string,
-    admin: Schema.string,
+    internal: Schema.String,
+    public: Schema.String,
+    admin: Schema.String,
     // Full name not in minimal view
   }),
   internalId: Field({
-    internal: Schema.number,
-    admin: Schema.number,
+    internal: Schema.Number,
+    admin: Schema.Number,
     // Internal ID only for internal/admin use
   }),
   lastLoginAt: Field({
@@ -348,14 +348,14 @@ const UserProfile = Struct({
     // Login info not public
   }),
   permissions: Field({
-    internal: Schema.array(Schema.string),
-    admin: Schema.array(Schema.string),
+    internal: Schema.Array(Schema.String),
+    admin: Schema.Array(Schema.String),
     // Permissions only for internal/admin
   }),
   profilePicture: Field({
-    internal: Schema.string,
-    public: Schema.string,
-    admin: Schema.string,
+    internal: Schema.String,
+    public: Schema.String,
+    admin: Schema.String,
     // No profile picture in minimal view
   }),
 })
@@ -379,25 +379,25 @@ const { Struct, Field, extract, fieldEvolve } = VariantSchema.make({
 
 const ContactForm = Struct({
   name: Field({
-    input: Schema.string,
-    validation: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
-    submitted: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
-    persisted: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    input: Schema.String,
+    validation: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
+    submitted: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
+    persisted: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
   }),
   email: Field({
-    input: Schema.string,
-    validation: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    submitted: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    persisted: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    input: Schema.String,
+    validation: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    submitted: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    persisted: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
   }),
   message: Field({
-    input: Schema.string,
-    validation: pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
-    submitted: pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
-    persisted: pipe(Schema.string, Schema.minLength(10), Schema.maxLength(1000)),
+    input: Schema.String,
+    validation: Schema.String.pipe(Schema.minLength(10), Schema.maxLength(1000)),
+    submitted: Schema.String.pipe(Schema.minLength(10), Schema.maxLength(1000)),
+    persisted: Schema.String.pipe(Schema.minLength(10), Schema.maxLength(1000)),
   }),
   id: Field({
-    persisted: Schema.string,
+    persisted: Schema.String,
     // ID only exists after persistence
   }),
   submittedAt: Field({
@@ -406,8 +406,8 @@ const ContactForm = Struct({
     // Timestamp only after submission
   }),
   status: Field({
-    submitted: Schema.literal("pending"),
-    persisted: Schema.union(Schema.literal("pending"), Schema.literal("processed"), Schema.literal("archived")),
+    submitted: Schema.Literal("pending"),
+    persisted: Schema.Union(Schema.Literal("pending"), Schema.Literal("processed"), Schema.Literal("archived")),
   }),
 })
 
@@ -436,8 +436,8 @@ const { Struct, Field, fieldEvolve } = VariantSchema.make({
 
 // Original field
 const titleField = Field({
-  draft: Schema.string,
-  published: Schema.string,
+  draft: Schema.String,
+  published: Schema.String,
 })
 
 // Transform the field - make published variant required with min length
@@ -446,8 +446,8 @@ const evolvedTitleField = fieldEvolve(titleField, {
 })
 
 // Result: Field({
-//   draft: Schema.string,
-//   published: pipe(Schema.string, Schema.minLength(1)),
+//   draft: Schema.String,
+//   published: Schema.String.pipe(Schema.minLength(1)),
 // })
 ```
 
@@ -458,14 +458,14 @@ import { pipe } from "effect"
 
 const BaseUser = Struct({
   email: Field({
-    input: Schema.string,
-    validated: Schema.string,
-    persisted: Schema.string,
+    input: Schema.String,
+    validated: Schema.String,
+    persisted: Schema.String,
   }),
   age: Field({
-    input: Schema.number,
-    validated: Schema.number,
-    persisted: Schema.number,
+    input: Schema.Number,
+    validated: Schema.Number,
+    persisted: Schema.Number,
   }),
 })
 
@@ -476,8 +476,8 @@ const ValidatedUser = Struct({
     persisted: (schema) => Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
   }),
   age: fieldEvolve(BaseUser.schemas.age, {
-    validated: (schema) => pipe(Schema.int(schema), Schema.between(0, 150)),
-    persisted: (schema) => pipe(Schema.int(schema), Schema.between(0, 150)),
+    validated: (schema) => schema.pipe(Schema.int(), Schema.between(0, 150)),
+    persisted: (schema) => schema.pipe(Schema.int(), Schema.between(0, 150)),
   }),
 })
 ```
@@ -502,9 +502,9 @@ const addValidation = <T extends Field<any>>(
 const User = Struct({
   email: addValidation(
     Field({
-      input: Schema.string,
-      draft: Schema.string,
-      published: Schema.string,
+      input: Schema.String,
+      draft: Schema.String,
+      published: Schema.String,
     }),
     ["published"],
     (schema) => Schema.pattern(schema, /^[^\s@]+@[^\s@]+\.[^\s@]+$/)
@@ -527,9 +527,9 @@ const { Struct, Field, fieldFromKey } = VariantSchema.make({
 const User = Struct({
   id: fieldFromKey(
     Field({
-      api: Schema.string,
-      database: Schema.string,
-      internal: Schema.string,
+      api: Schema.String,
+      database: Schema.String,
+      internal: Schema.String,
     }),
     {
       api: "userId",        // Renamed to "userId" in API variant
@@ -539,9 +539,9 @@ const User = Struct({
   ),
   firstName: fieldFromKey(
     Field({
-      api: Schema.string,
-      database: Schema.string,
-      internal: Schema.string,
+      api: Schema.String,
+      database: Schema.String,
+      internal: Schema.String,
     }),
     {
       api: "firstName",
@@ -574,14 +574,14 @@ const { Struct, Field, extract } = VariantSchema.make({
 
 const ApiResponse = Struct({
   data: Field({
-    v1: Schema.string,
-    v2: Schema.Struct({ value: Schema.string }),
-    v3: Schema.Struct({ value: Schema.string, metadata: Schema.record(Schema.string, Schema.unknown) }),
+    v1: Schema.String,
+    v2: Schema.Struct({ value: Schema.String }),
+    v3: Schema.Struct({ value: Schema.String, metadata: Schema.Record({ key: Schema.String, value: Schema.Unknown }) }),
   }),
   version: Field({
-    v1: Schema.literal("1.0"),
-    v2: Schema.literal("2.0"),
-    v3: Schema.literal("3.0"),
+    v1: Schema.Literal("1.0"),
+    v2: Schema.Literal("2.0"),
+    v3: Schema.Literal("3.0"),
   }),
 })
 
@@ -622,46 +622,46 @@ const { Struct, Field, Union, extract } = VariantSchema.make({
 
 const UserEvent = Struct({
   type: Field({
-    create: Schema.literal("user_created"),
-    read: Schema.literal("user_created"),
-    update: Schema.literal("user_created"),
+    create: Schema.Literal("user_created"),
+    read: Schema.Literal("user_created"),
+    update: Schema.Literal("user_created"),
   }),
   userId: Field({
-    create: Schema.string,
-    read: Schema.string,
-    update: Schema.string,
+    create: Schema.String,
+    read: Schema.String,
+    update: Schema.String,
   }),
   userData: Field({
     create: Schema.Struct({
-      email: Schema.string,
-      name: Schema.string,
+      email: Schema.String,
+      name: Schema.String,
     }),
     read: Schema.Struct({
-      email: Schema.string,
-      name: Schema.string,
+      email: Schema.String,
+      name: Schema.String,
     }),
   }),
 })
 
 const ProductEvent = Struct({
   type: Field({
-    create: Schema.literal("product_created"),
-    read: Schema.literal("product_created"),
-    update: Schema.literal("product_created"),
+    create: Schema.Literal("product_created"),
+    read: Schema.Literal("product_created"),
+    update: Schema.Literal("product_created"),
   }),
   productId: Field({
-    create: Schema.string,
-    read: Schema.string,
-    update: Schema.string,
+    create: Schema.String,
+    read: Schema.String,
+    update: Schema.String,
   }),
   productData: Field({
     create: Schema.Struct({
-      name: Schema.string,
-      price: Schema.number,
+      name: Schema.String,
+      price: Schema.Number,
     }),
     read: Schema.Struct({
-      name: Schema.string,
-      price: Schema.number,
+      name: Schema.String,
+      price: Schema.Number,
     }),
   }),
 })
@@ -688,19 +688,19 @@ const { Class, Field } = VariantSchema.make({
 // Create a variant-aware User class
 export class User extends Class<User>("User")({
   id: Field({
-    persisted: Schema.string,
-    json: Schema.string,
+    persisted: Schema.String,
+    json: Schema.String,
     // No id in create variant
   }),
   email: Field({
-    create: Schema.string,
-    persisted: Schema.string,
-    json: Schema.string,
+    create: Schema.String,
+    persisted: Schema.String,
+    json: Schema.String,
   }),
   name: Field({
-    create: Schema.string,
-    persisted: Schema.string,
-    json: Schema.string,
+    create: Schema.String,
+    persisted: Schema.String,
+    json: Schema.String,
   }),
   createdAt: Field({
     persisted: Schema.Date,
@@ -749,12 +749,12 @@ const Public = <T extends Schema.Schema.All>(schema: T) => Field({
 })
 
 const User = Struct({
-  id: Public(Schema.string),
-  email: Public(Schema.string),
-  passwordHash: Sensitive(Schema.string),
-  socialSecurityNumber: Sensitive(Schema.string),
-  name: Public(Schema.string),
-  apiKey: Sensitive(Schema.string),
+  id: Public(Schema.String),
+  email: Public(Schema.String),
+  passwordHash: Sensitive(Schema.String),
+  socialSecurityNumber: Sensitive(Schema.String),
+  name: Public(Schema.String),
+  apiKey: Sensitive(Schema.String),
 })
 
 const ApiUser = extract(User, "api")        // Safe for API responses
@@ -785,11 +785,11 @@ const UserProvided = <T extends Schema.Schema.All>(inputSchema: T, persistedSche
 })
 
 const BlogPost = Struct({
-  id: Generated(Schema.string),
-  slug: Generated(Schema.string), // Generated from title
-  title: UserProvided(Schema.string),
-  content: UserProvided(Schema.string),
-  excerpt: Generated(Schema.string), // Auto-generated from content
+  id: Generated(Schema.String),
+  slug: Generated(Schema.String), // Generated from title
+  title: UserProvided(Schema.String),
+  content: UserProvided(Schema.String),
+  excerpt: Generated(Schema.String), // Auto-generated from content
   publishedAt: Generated(Schema.Date),
   createdAt: Generated(Schema.Date),
   updatedAt: Generated(Schema.Date),
@@ -833,14 +833,14 @@ const UserTimestamp = <Required extends boolean = false>(required?: Required) =>
 
 const Article = Struct({
   id: Field({
-    select: Schema.string,
-    json: Schema.string,
+    select: Schema.String,
+    json: Schema.String,
   }),
   title: Field({
-    create: Schema.string,
-    update: Schema.optional(Schema.string),
-    select: Schema.string,
-    json: Schema.string,
+    create: Schema.String,
+    update: Schema.optional(Schema.String),
+    select: Schema.String,
+    json: Schema.String,
   }),
   publishedAt: UserTimestamp(false), // Optional publish date
   createdAt: CreatedTimestamp,
@@ -874,17 +874,17 @@ const Progressive = <T extends Schema.Schema.All>(
 
 const Article = Struct({
   id: Field({
-    review: Schema.string,
-    published: Schema.string,
+    review: Schema.String,
+    published: Schema.String,
     // No ID in draft
   }),
-  title: Progressive(Schema.string, { draft: true, review: true, published: true }),
-  content: Progressive(Schema.string, { draft: false, review: true, published: true }),
-  excerpt: Progressive(Schema.string, { draft: false, review: false, published: true }),
-  tags: Progressive(Schema.array(Schema.string), { draft: false, review: false, published: true }),
-  featuredImage: Progressive(Schema.string, { draft: false, review: false, published: true }),
-  seoTitle: Progressive(Schema.string, { draft: false, review: false, published: true }),
-  seoDescription: Progressive(Schema.string, { draft: false, review: false, published: true }),
+  title: Progressive(Schema.String, { draft: true, review: true, published: true }),
+  content: Progressive(Schema.String, { draft: false, review: true, published: true }),
+  excerpt: Progressive(Schema.String, { draft: false, review: false, published: true }),
+  tags: Progressive(Schema.Array(Schema.String), { draft: false, review: false, published: true }),
+  featuredImage: Progressive(Schema.String, { draft: false, review: false, published: true }),
+  seoTitle: Progressive(Schema.String, { draft: false, review: false, published: true }),
+  seoDescription: Progressive(Schema.String, { draft: false, review: false, published: true }),
 })
 
 // Draft: Only title required
@@ -905,19 +905,19 @@ const { Struct, Field, extract } = VariantSchema.make({
 
 const UserInput = Struct({
   email: Field({
-    lenient: Schema.string, // Accept any string
-    strict: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
-    api: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    lenient: Schema.String, // Accept any string
+    strict: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    api: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
   }),
   age: Field({
-    lenient: Schema.union(Schema.string, Schema.number), // Accept string or number
-    strict: pipe(Schema.number, Schema.int(), Schema.between(0, 150)),
-    api: pipe(Schema.number, Schema.int(), Schema.between(0, 150)),
+    lenient: Schema.Union(Schema.String, Schema.Number), // Accept string or number
+    strict: Schema.Number.pipe(Schema.int(), Schema.between(0, 150)),
+    api: Schema.Number.pipe(Schema.int(), Schema.between(0, 150)),
   }),
   name: Field({
-    lenient: Schema.string,
-    strict: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
-    api: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    lenient: Schema.String,
+    strict: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
+    api: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
   }),
 })
 
@@ -954,30 +954,30 @@ const { Struct, Field, extract } = VariantSchema.make({
 // Define schema with ElectroDB-specific transformations
 const User = Struct({
   pk: Field({
-    electrodb: Schema.string, // Partition key for ElectroDB
+    electrodb: Schema.String, // Partition key for ElectroDB
     // Not exposed in API or internal variants
   }),
   sk: Field({
-    electrodb: Schema.string, // Sort key for ElectroDB
+    electrodb: Schema.String, // Sort key for ElectroDB
     // Not exposed in API or internal variants
   }),
   id: Field({
-    internal: Schema.string,
-    api: Schema.string,
+    internal: Schema.String,
+    api: Schema.String,
     // Maps to pk/sk in ElectroDB
   }),
   email: Field({
-    electrodb: Schema.string,
-    internal: Schema.string,
-    api: Schema.string,
+    electrodb: Schema.String,
+    internal: Schema.String,
+    api: Schema.String,
   }),
   name: Field({
-    electrodb: Schema.string,
-    internal: Schema.string,
-    api: Schema.string,
+    electrodb: Schema.String,
+    internal: Schema.String,
+    api: Schema.String,
   }),
   createdAt: Field({
-    electrodb: Schema.number, // Unix timestamp for ElectroDB
+    electrodb: Schema.Number, // Unix timestamp for ElectroDB
     internal: Schema.Date,
     api: Schema.DateTimeUtc,
   }),
@@ -1040,33 +1040,33 @@ const { Struct, Field, extract } = VariantSchema.make({
 
 const CreateUserRequest = Struct({
   email: Field({
-    input: pipe(Schema.string, Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    input: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
   }),
   name: Field({
-    input: pipe(Schema.string, Schema.minLength(1), Schema.maxLength(100)),
+    input: Schema.String.pipe(Schema.minLength(1), Schema.maxLength(100)),
   }),
   password: Field({
-    input: pipe(Schema.string, Schema.minLength(8)),
+    input: Schema.String.pipe(Schema.minLength(8)),
   }),
 })
 
 const CreateUserResponse = Struct({
   id: Field({
-    output: Schema.string,
+    output: Schema.String,
   }),
   email: Field({
-    output: Schema.string,
+    output: Schema.String,
   }),
   name: Field({
-    output: Schema.string,
+    output: Schema.String,
   }),
   createdAt: Field({
     output: Schema.DateTimeUtc,
   }),
   errors: Field({
-    error: Schema.array(Schema.Struct({
-      field: Schema.string,
-      message: Schema.string,
+    error: Schema.Array(Schema.Struct({
+      field: Schema.String,
+      message: Schema.String,
     })),
   }),
 })
@@ -1116,24 +1116,24 @@ const { Struct, Field, extract } = VariantSchema.make({
 
 const ContactForm = Struct({
   name: Field({
-    form: Schema.string,
-    api: Schema.minLength(Schema.string, 1),
-    display: Schema.string,
+    form: Schema.String,
+    api: Schema.String.pipe(Schema.minLength(1)),
+    display: Schema.String,
   }),
   email: Field({
-    form: Schema.string,
-    api: Schema.pattern(Schema.string, /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
-    display: Schema.string,
+    form: Schema.String,
+    api: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+    display: Schema.String,
   }),
   message: Field({
-    form: Schema.string,
-    api: Schema.minLength(Schema.string, 10),
-    display: Schema.string,
+    form: Schema.String,
+    api: Schema.String.pipe(Schema.minLength(10)),
+    display: Schema.String,
   }),
   newsletter: Field({
-    form: Schema.boolean,
-    api: Schema.boolean,
-    display: Schema.boolean,
+    form: Schema.Boolean,
+    api: Schema.Boolean,
+    display: Schema.Boolean,
   }),
 })
 
@@ -1194,18 +1194,18 @@ const { Struct, Field, extract } = VariantSchema.make({
 
 const User = Struct({
   id: Field({
-    output: Schema.string,
-    test: Schema.string,
+    output: Schema.String,
+    test: Schema.String,
   }),
   email: Field({
-    input: Schema.string,
-    output: Schema.string,
-    test: Schema.literal("test@example.com"),
+    input: Schema.String,
+    output: Schema.String,
+    test: Schema.Literal("test@example.com"),
   }),
   name: Field({
-    input: Schema.string,
-    output: Schema.string,
-    test: Schema.literal("Test User"),
+    input: Schema.String,
+    output: Schema.String,
+    test: Schema.Literal("Test User"),
   }),
 })
 

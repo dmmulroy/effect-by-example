@@ -1393,15 +1393,15 @@ import { Record, pipe, Effect, Schema } from "effect"
 const UserSchema = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
-  email: Schema.pattern(Schema.String, /^[^\s@]+@[^\s@]+\.[^\s@]+$/),
-  age: Schema.between(Schema.Number, 18, 120),
+  email: Schema.String.pipe(Schema.pattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)),
+  age: Schema.Number.pipe(Schema.between(18, 120)),
   preferences: Schema.Record({ key: Schema.String, value: Schema.Unknown })
 })
 
 const ProductSchema = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
-  price: Schema.positive(Schema.Number),
+  price: Schema.Number.pipe(Schema.positive()),
   category: Schema.String,
   inStock: Schema.Boolean
 })

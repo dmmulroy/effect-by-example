@@ -2259,16 +2259,16 @@ import { SortedSet, Order, pipe, Effect, Option, Either, Schema, Stream } from "
 
 // Schema integration for validated sorted sets
 const ScoreSchema = Schema.between(
-  Schema.int(Schema.number),
+  Schema.Number.pipe(Schema.int()),
   0,
   100
 )
 
 const PlayerSchema = Schema.struct({
-  id: Schema.string,
-  name: Schema.string,
+  id: Schema.String,
+  name: Schema.String,
   score: ScoreSchema,
-  level: Schema.positive(Schema.number)
+  level: Schema.Number.pipe(Schema.positive())
 })
 
 type Player = Schema.Schema.Type<typeof PlayerSchema>

@@ -1699,16 +1699,16 @@ class LRUCache<K, V> {
 import { SortedMap, Order, pipe, Effect, Option, Either, Schema } from "effect"
 
 // Schema integration for validated sorted maps
-const PriceSchema = Schema.number.pipe(
+const PriceSchema = Schema.Number.pipe(
   Schema.positive(),
   Schema.lessThanOrEqual(1000000)
 )
 
 const ProductSchema = Schema.struct({
-  id: Schema.string,
-  name: Schema.string,
+  id: Schema.String,
+  name: Schema.String,
   price: PriceSchema,
-  category: Schema.literal('electronics', 'clothing', 'food')
+  category: Schema.Literal('electronics', 'clothing', 'food')
 })
 
 type Product = Schema.Schema.Type<typeof ProductSchema>

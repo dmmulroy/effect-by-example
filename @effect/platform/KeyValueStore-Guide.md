@@ -468,7 +468,7 @@ import { Effect, Schema, Option, Match } from "effect"
 const FeatureFlag = Schema.Struct({
   name: Schema.String,
   enabled: Schema.Boolean,
-  rolloutPercentage: Schema.optional(Schema.between(Schema.Number, 0, 100)),
+  rolloutPercentage: Schema.optional(Schema.Number.pipe(Schema.between(0, 100))),
   enabledForUsers: Schema.optional(Schema.Array(Schema.String)),
   metadata: Schema.optional(Schema.Record(
     Schema.String,
@@ -1670,7 +1670,7 @@ describe("SchemaStore", () => {
   const User = Schema.Struct({
     id: Schema.String,
     email: Schema.Email,
-    age: Schema.positive(Schema.Number)
+    age: Schema.Number.pipe(Schema.positive())
   })
   
   it("should validate on set", () =>

@@ -261,7 +261,7 @@ Modules that would benefit from this documentation style:
 - **Config**: Configuration management
 - **CLI**: Command-line interface building
 
-## All of Effect-TS' source code is available for you to examine and read in ./effect-src
+## All of Effect-TS' source code is available for you to examine and read in the gitignore ./effect-src directory
 
 ## Effect-TS Syntax Guidelines
 

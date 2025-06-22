@@ -1,4 +1,4 @@
-# Effect by Example: Complete Module Documentation [WIP]
+# effect.guide: Effect's complete module documentation [WIP]
 
 [![Completion Status](https://img.shields.io/badge/Modules-42%2F110-orange)](https://github.com/dmmulroy/effect-by-example)
 [![Documentation](https://img.shields.io/badge/Docs-Comprehensive-blue)](https://github.com/dmmulroy/effect-by-example)
@@ -11,7 +11,7 @@ Comprehensive, real-world focused guides for **110 modules** in the Effect ecosy
 ## 🗂️ Repository Structure
 
 ```
-effect-by-example/
+effect.guide/
 ├── effect/                    # Core module guides (29/97 guides)
 │   ├── Effect-Guide.md       # Essential computation type
 │   ├── Schema-Guide.md       # Type-safe validation
@@ -47,7 +47,7 @@ effect-by-example/
 | **Tier 1** | Core Platform | ✅ Complete | 5/5 |
 | **Tier 2** | System Integration | ✅ Complete | 5/5 |
 | **Tier 3** | Specialized | ✅ Complete | 3/3 |
-| **Platform Total** | **All Platform Modules** | **✅ Complete** | **13/13** |
+| **Platform Total** | **All Platform Modules** | **✅ Complete** | **13/13* |
 
 ### **Grand Total: 42/110 Modules 🚧**
 
