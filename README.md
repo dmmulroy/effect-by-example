@@ -1,10 +1,10 @@
 # Effect by Example: Complete Module Documentation
 
-[![Completion Status](https://img.shields.io/badge/Modules-29%2F29-brightgreen)](https://github.com/dmmulroy/effect-by-example)
+[![Completion Status](https://img.shields.io/badge/Modules-42%2F42-brightgreen)](https://github.com/dmmulroy/effect-by-example)
 [![Documentation](https://img.shields.io/badge/Docs-Comprehensive-blue)](https://github.com/dmmulroy/effect-by-example)
-[![Examples](https://img.shields.io/badge/Examples-150%2B-orange)](https://github.com/dmmulroy/effect-by-example)
+[![Examples](https://img.shields.io/badge/Examples-200%2B-orange)](https://github.com/dmmulroy/effect-by-example)
 
-Comprehensive, real-world focused guides for **all 29 core modules** in the Effect ecosystem. Each guide is crafted with practical examples, testing strategies, and integration patterns that developers can immediately apply to production applications.
+Comprehensive, real-world focused guides for **42 modules** in the Effect ecosystem, including core modules and platform abstractions. Each guide is crafted with practical examples, testing strategies, and integration patterns that developers can immediately apply to production applications.
 
 ## 🗂️ Repository Structure
 
@@ -15,25 +15,36 @@ effect-by-example/
 │   ├── Schema-Guide.md       # Type-safe validation
 │   └── ...                   # All other core modules
 ├── @effect/
+│   ├── platform/             # Platform module guides (13 guides)
+│   │   ├── HttpClient-Guide.md
+│   │   ├── HttpServer-Guide.md
+│   │   └── ...               # All platform modules
 │   └── experimental/         # Experimental module guides
 │       └── VariantSchema-Guide.md
-├── examples/                 # Standalone code examples
-│   ├── array/               # Array manipulation examples
-│   ├── effect/              # Core Effect examples
-│   └── ...                  # Examples by module
 └── CLAUDE.md                # Documentation template
 ```
 
 ## 📊 Completion Status
 
-**🎉 Project Complete: 29/29 Core Modules Documented**
+**🎉 Project Complete: 42/42 Modules Documented**
 
+### Core Effect Modules
 | Tier | Category | Status | Count |
 |------|----------|---------|-------|
 | **Tier 1** | Core Essentials | ✅ Complete | 8/8 |
 | **Tier 2** | Advanced Features | ✅ Complete | 10/10 |
 | **Tier 3** | Data Structures & Utilities | ✅ Complete | 11/11 |
-| **Total** | **All Effect Core Modules** | **✅ Complete** | **29/29** |
+| **Core Total** | **All Effect Core Modules** | **✅ Complete** | **29/29** |
+
+### Effect Platform Modules
+| Tier | Category | Status | Count |
+|------|----------|---------|-------|
+| **Tier 1** | Core Platform | ✅ Complete | 5/5 |
+| **Tier 2** | System Integration | ✅ Complete | 5/5 |
+| **Tier 3** | Specialized | ✅ Complete | 3/3 |
+| **Platform Total** | **All Platform Modules** | **✅ Complete** | **13/13** |
+
+### **Grand Total: 42/42 Modules ✅**
 
 ---
 
@@ -83,6 +94,38 @@ Specialized data structures, time operations, and utility modules for specific u
 28. **[Runtime](./effect/Runtime-Guide.md)** - Effect execution environment configuration
 29. **[Function](./effect/Function-Guide.md)** - Function composition and utility operations
 
+## Effect Platform Modules 🏗️
+
+Cross-platform abstractions for building applications that run consistently across Node.js, Deno, Bun, and browsers.
+
+### Tier 1 - Core Platform ✅
+
+Essential platform modules for HTTP communication, file operations, and storage.
+
+30. **[HttpClient](./@effect/platform/HttpClient-Guide.md)** - HTTP client requests with authentication, retries, and caching
+31. **[HttpServer](./@effect/platform/HttpServer-Guide.md)** - HTTP server creation, middleware, and request handling
+32. **[FileSystem](./@effect/platform/FileSystem-Guide.md)** - Cross-platform file system operations and streaming
+33. **[KeyValueStore](./@effect/platform/KeyValueStore-Guide.md)** - Unified key-value storage with multiple backend implementations
+34. **[Path](./@effect/platform/Path-Guide.md)** - Safe cross-platform file path operations and manipulation
+
+### Tier 2 - System Integration ✅
+
+Advanced modules for system-level operations, process management, and infrastructure.
+
+35. **[Terminal](./@effect/platform/Terminal-Guide.md)** - Terminal input/output, CLI applications, and interactive interfaces
+36. **[Command](./@effect/platform/Command-Guide.md)** - Process execution, build automation, and system command integration
+37. **[Socket](./@effect/platform/Socket-Guide.md)** - TCP/UDP networking, real-time communication, and inter-process messaging
+38. **[Worker](./@effect/platform/Worker-Guide.md)** - Parallel processing, CPU-intensive tasks, and background job management
+39. **[Runtime](./@effect/platform/Runtime-Guide.md)** - Application lifecycle management, graceful shutdown, and error handling
+
+### Tier 3 - Specialized Platform ✅
+
+Specialized modules for advanced HTTP patterns, API design, and logging.
+
+40. **[HttpRouter](./@effect/platform/HttpRouter-Guide.md)** - Advanced HTTP routing, middleware composition, and REST API patterns
+41. **[HttpApi](./@effect/platform/HttpApi-Guide.md)** - Declarative API definition, OpenAPI generation, and type-safe client generation
+42. **[PlatformLogger](./@effect/platform/PlatformLogger-Guide.md)** - File-based logging, structured logging, and log rotation strategies
+
 ---
 
 ## 🎯 Learning Paths
@@ -105,10 +148,18 @@ Specialized data structures, time operations, and utility modules for specific u
 2. **Time-Sensitive Systems**: [Duration](./effect/Duration-Guide.md) → [DateTime](./effect/DateTime-Guide.md) → [Clock](./effect/Clock-Guide.md)
 3. **Testing & Debugging**: [Random](./effect/Random-Guide.md) → [Runtime](./effect/Runtime-Guide.md) → [Exit](./effect/Exit-Guide.md)
 
+### For Platform Development
+**Cross-Platform Applications → System Integration → Infrastructure**
+1. **Web Development**: [HttpServer](./@effect/platform/HttpServer-Guide.md) → [HttpClient](./@effect/platform/HttpClient-Guide.md) → [HttpRouter](./@effect/platform/HttpRouter-Guide.md) → [HttpApi](./@effect/platform/HttpApi-Guide.md)
+2. **System Integration**: [FileSystem](./@effect/platform/FileSystem-Guide.md) → [Path](./@effect/platform/Path-Guide.md) → [Command](./@effect/platform/Command-Guide.md) → [Terminal](./@effect/platform/Terminal-Guide.md)
+3. **Infrastructure & Performance**: [KeyValueStore](./@effect/platform/KeyValueStore-Guide.md) → [Socket](./@effect/platform/Socket-Guide.md) → [Worker](./@effect/platform/Worker-Guide.md) → [Runtime](./@effect/platform/Runtime-Guide.md)
+
 ### By Use Case
-- **Web APIs**: Effect → Schema → Stream → Config → Layer
-- **Data Processing**: Array → Stream → Chunk → HashMap → Schedule  
-- **Real-time Systems**: Fiber → Queue → STM → Clock → FiberRef
+- **Web APIs**: Effect → Schema → HttpServer → HttpRouter → HttpApi
+- **Data Processing**: Array → Stream → Chunk → FileSystem → Worker
+- **Real-time Systems**: Fiber → Queue → STM → Socket → Clock
+- **CLI Tools**: Effect → Terminal → Command → FileSystem → Config
+- **System Integration**: Layer → Context → KeyValueStore → Runtime → PlatformLogger
 - **Testing**: Random → Clock → Runtime → Function → Channel
 
 ---
@@ -124,7 +175,7 @@ Each guide follows a rigorous standard designed for immediate practical applicat
 - **Heavy Code Examples**: 60-70% executable code with comprehensive inline documentation
 
 ### Quality Standards
-- ✅ **Complete & Runnable**: All 150+ examples include imports and are immediately executable
+- ✅ **Complete & Runnable**: All 200+ examples include imports and are immediately executable
 - ✅ **Effect Best Practices**: Follows official Effect patterns and idiomatic usage
 - ✅ **Comprehensive Error Handling**: Proper error management patterns throughout
 - ✅ **Type-Safe**: Full TypeScript integration with inference demonstrations
@@ -154,7 +205,14 @@ Each guide follows a rigorous standard designed for immediate practical applicat
 1. **[Layer](./effect/Layer-Guide.md)** - Structure your application with dependency injection
 2. **[Context](./effect/Context-Guide.md)** - Manage services and configuration
 3. **[Config](./effect/Config-Guide.md)** - Handle environment-specific settings
-4. **[Stream](./effect/Stream-Guide.md)** - Process data efficiently
+4. **[HttpServer](./@effect/platform/HttpServer-Guide.md)** - Build web applications and APIs
+
+### Platform & Infrastructure?
+**Platform Development Track:**
+1. **[FileSystem](./@effect/platform/FileSystem-Guide.md)** - Handle files and directories across platforms
+2. **[HttpClient](./@effect/platform/HttpClient-Guide.md)** - Consume APIs and external services
+3. **[KeyValueStore](./@effect/platform/KeyValueStore-Guide.md)** - Implement caching and storage
+4. **[Worker](./@effect/platform/Worker-Guide.md)** - Process intensive tasks in the background
 
 ### Performance & Concurrency?
 **Advanced Patterns Track:**
@@ -170,16 +228,17 @@ Each guide follows a rigorous standard designed for immediate practical applicat
 The guides include comprehensive examples from these production scenarios:
 
 ### Backend Development
-- **REST APIs**: Client implementation, rate limiting, retry logic, circuit breakers
-- **GraphQL**: Query building, schema validation, resolver patterns, subscription handling
+- **REST APIs**: HttpServer routing, HttpClient consumption, rate limiting, retry logic, circuit breakers
+- **HTTP Services**: Middleware composition, request validation, response transformation, error handling
+- **GraphQL**: Query building, schema validation, resolver patterns, subscription handling  
 - **Database Operations**: CRUD with transactions, connection pooling, migration handling
-- **Authentication**: JWT handling, session management, multi-factor auth flows
+- **Authentication**: JWT handling, session management with KeyValueStore, multi-factor auth flows
 
 ### Data Processing  
 - **ETL Pipelines**: Stream processing, data transformation, error recovery
-- **File Processing**: Log analysis, CSV parsing, large file streaming, batch operations
-- **Analytics**: Real-time metrics, aggregation patterns, reporting systems
-- **Message Queues**: Producer-consumer patterns, dead letter handling, backpressure
+- **File Processing**: FileSystem operations, log analysis, CSV parsing, large file streaming with Worker
+- **Analytics**: Real-time metrics, aggregation patterns, PlatformLogger integration, reporting systems
+- **Message Queues**: Producer-consumer patterns with Socket, dead letter handling, backpressure
 
 ### Web Applications
 - **E-commerce**: Shopping cart logic, inventory management, order processing, payment flows  
@@ -188,9 +247,11 @@ The guides include comprehensive examples from these production scenarios:
 - **Form Validation**: Progressive enhancement, field-level errors, complex business rules
 
 ### System Integration
-- **Configuration Management**: Environment variables, feature toggles, A/B testing
+- **Configuration Management**: Environment variables with Config, feature toggles, A/B testing
+- **Command Line Tools**: Terminal interfaces, Command execution, cross-platform Path handling
+- **Process Management**: Worker coordination, Runtime lifecycle, graceful shutdown patterns
 - **Testing**: Unit tests, integration tests, property-based testing, snapshot testing
-- **Monitoring**: Health checks, metrics collection, distributed tracing, alerting
+- **Monitoring**: Health checks, metrics collection, PlatformLogger, distributed tracing, alerting
 - **Deployment**: Blue-green deployments, canary releases, rollback strategies
 
 ---
@@ -236,6 +297,7 @@ All contributions must maintain the established quality standards:
 ### This Repository
 - [Documentation Template](./CLAUDE.md) - Template for creating consistent guides
 - [Example Code](./examples/) - Standalone executable examples by module
+- [Platform Guides](./@effect/platform/) - Complete guides for all Effect Platform modules
 - [Experimental Guides](./@effect/experimental/) - Guides for experimental Effect modules
 
 ### Learning Resources
