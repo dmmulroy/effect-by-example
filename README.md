@@ -1,4 +1,4 @@
-# Effect by Example: Complete Module Documentation
+# Effect by Example: Complete Module Documentation [WIP]
 
 [![Completion Status](https://img.shields.io/badge/Modules-42%2F110-orange)](https://github.com/dmmulroy/effect-by-example)
 [![Documentation](https://img.shields.io/badge/Docs-Comprehensive-blue)](https://github.com/dmmulroy/effect-by-example)
