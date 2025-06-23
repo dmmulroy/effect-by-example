@@ -7,8 +7,7 @@
 > **⚠️ WORK IN PROGRESS DISCLAIMER**
 > 
 > This documentation is currently a work in progress. All code examples and guides have been generated using Claude Code and have **not yet been typechecked or tested**. While we plan to validate and verify all examples, the guides are designed to be very close to accurate in conveying how the modules work and the core concepts behind them.
-> 
-> **Use at your own risk** - Always verify code examples against the official Effect documentation and test thoroughly before using in production applications.
+
 
 Comprehensive, real-world focused guides for **180 modules** in the Effect ecosystem, including core modules, concurrency primitives, STM operations, and advanced features. Each guide is crafted with practical examples, testing strategies, and integration patterns that developers can immediately apply to production applications.
 
