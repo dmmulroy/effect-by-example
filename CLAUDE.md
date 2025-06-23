@@ -261,6 +261,8 @@ Modules that would benefit from this documentation style:
 - **Config**: Configuration management
 - **CLI**: Command-line interface building
 
+## **MOST IMPORTANT RULE**: Validate every effect module, type, and function actually exists and is used correctly
+
 ## All of Effect-TS' source code is available for you to examine and read in the gitignore ./effect-src directory
 
 ## Effect-TS Syntax Guidelines
@@ -565,6 +567,11 @@ import { Array as Arr, Function as Fn } from "effect"
 
 ### Do Simulation/Notation Syntax Rules/Standards
 NEVER EVER USE DO SIMULATION/NOTATION SYNTAX OR APIS
+
+
+## Every code sample should typecheck
+Before finalizing any code snippet validate that it typechecks with tsc
+
 
 ## Best Practices for Documentation
 
