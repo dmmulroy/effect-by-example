@@ -1,12 +1,18 @@
-# effect.guide: Effect's complete module documentation [WIP]
+# effect.guide: Effect-TS Module Documentation
 
-[![Completion Status](https://img.shields.io/badge/Modules-42%2F110-orange)](https://github.com/dmmulroy/effect-by-example)
+[![Completion Status](https://img.shields.io/badge/Modules-100%2F180-green)](https://github.com/dmmulroy/effect-by-example)
 [![Documentation](https://img.shields.io/badge/Docs-Comprehensive-blue)](https://github.com/dmmulroy/effect-by-example)
-[![Examples](https://img.shields.io/badge/Examples-400%2B-orange)](https://github.com/dmmulroy/effect-by-example)
+[![Examples](https://img.shields.io/badge/Examples-1000%2B-green)](https://github.com/dmmulroy/effect-by-example)
 
-Comprehensive, real-world focused guides for **110 modules** in the Effect ecosystem, including core modules, platform abstractions, and experimental features. Each guide is crafted with practical examples, testing strategies, and integration patterns that developers can immediately apply to production applications.
+> **⚠️ WORK IN PROGRESS DISCLAIMER**
+> 
+> This documentation is currently a work in progress. All code examples and guides have been generated using Claude Code and have **not yet been typechecked or tested**. While we plan to validate and verify all examples, the guides are designed to be very close to accurate in conveying how the modules work and the core concepts behind them.
+> 
+> **Use at your own risk** - Always verify code examples against the official Effect documentation and test thoroughly before using in production applications.
 
-**Current Progress**: 42/110 modules documented (38% complete) with 68 modules remaining.
+Comprehensive, real-world focused guides for **180 modules** in the Effect ecosystem, including core modules, concurrency primitives, STM operations, and advanced features. Each guide is crafted with practical examples, testing strategies, and integration patterns that developers can immediately apply to production applications.
+
+**Current Progress**: 100/180 modules documented (55.6% complete) with 80 modules remaining.
 
 ## 🗂️ Repository Structure
 
@@ -28,38 +34,36 @@ effect.guide/
 
 ## 📊 Completion Status
 
-**🚧 Project In Progress: 42/110 Modules Documented (38% Complete)**
+**🚧 Project In Progress: 100/180 Modules Documented (55.6% Complete)**
 
-### Core Effect Modules
+### Core Effect Modules Progress
 | Tier | Category | Status | Count |
 |------|----------|---------|-------|
-| **Tier 1** | Foundation Modules | ⚠️ Partial | 8/20 |
-| **Tier 2** | Data Structures | ⚠️ Partial | 9/25 |
-| **Tier 3** | Advanced Features | ⚠️ Partial | 9/18 |
-| **Tier 4** | STM Modules | ❌ Missing | 0/12 |
-| **Tier 5** | System & Infrastructure | ⚠️ Partial | 3/15 |
-| **Tier 6** | Specialized & Advanced | ❌ Missing | 0/7 |
-| **Core Total** | **All Effect Core Modules** | **🚧 In Progress** | **29/97** |
+| **Tier 1** | High-Priority Core | ✅ Complete | 24/24 |
+| **Tier 2** | Data Structures & Collections | ✅ Complete | 28/28 |
+| **Tier 3** | Concurrency & STM | 🚧 In Progress | 14/20 |
+| **Tier 4** | Advanced Features | ⏸️ Waiting | 0/30 |
+| **Tier 5** | Metrics & Observability | ⏸️ Waiting | 0/18 |
+| **Tier 6** | Testing & Utilities | ⏸️ Waiting | 0/26 |
+| **Core Total** | **All Effect Core Modules** | **🚧 In Progress** | **66/146** |
 
-### Effect Platform Modules
-| Tier | Category | Status | Count |
-|------|----------|---------|-------|
-| **Tier 1** | Core Platform | ✅ Complete | 5/5 |
-| **Tier 2** | System Integration | ✅ Complete | 5/5 |
-| **Tier 3** | Specialized | ✅ Complete | 3/3 |
-| **Platform Total** | **All Platform Modules** | **✅ Complete** | **13/13* |
+### Already Completed Base Modules
+| Category | Status | Count |
+|----------|---------|-------|
+| **Foundation Modules** | ✅ Complete | 34/34 |
+| **Foundation Total** | **Base Effect Modules** | **✅ Complete** | **34/34** |
 
-### **Grand Total: 42/110 Modules 🚧**
+### **Grand Total: 100/180 Modules 🚧**
 
-**Remaining Work**: 68 modules to document
-- **68 Core Effect modules** requiring comprehensive guides
-- **Target completion**: Q2 2025
+**Remaining Work**: 80 modules to document
+- **80 Core Effect modules** requiring comprehensive guides
+- **Target completion**: Q3 2025
 
 ---
 
 ## 📚 Module Documentation
 
-### Current Modules (42/110 Complete)
+### Current Modules (100/180 Complete)
 
 #### ✅ Tier 1 - Foundation Modules (8/20 Complete)
 
@@ -137,24 +141,31 @@ Specialized modules for advanced HTTP patterns, API design, and logging.
 41. **[HttpApi](./@effect/platform/HttpApi-Guide.md)** - Declarative API definition, OpenAPI generation, and type-safe client generation
 42. **[PlatformLogger](./@effect/platform/PlatformLogger-Guide.md)** - File-based logging, structured logging, and log rotation strategies
 
-## 🚧 Missing Core Effect Modules (68 Remaining)
+## ✅ Recently Completed Modules (52 New Guides)
 
-### Priority 1 - Essential Foundation (12 modules)
-📋 **Predicate**, **Struct**, **Record**, **String**, **Number**, **Boolean**, **Tuple**, **Types**, **Equal**, **Equivalence**, **Order**, **Match**
+### Tier 1 - High-Priority Core (24 modules) ✅
+**Ref**, **Data**, **Logger**, **Cache**, **Cause**, **Equal**, **Hash**, **Order**, **Brand**, **Console**, **Encoding**, **Redacted**, **Symbol**, **Types**, **Utils**, **Pipeable**, **Micro**, **Pool**, **Resource**, **ManagedRuntime**, **Supervisor**, **Tracer**, **Pretty**, **Match**
 
-### Priority 2 - Data Structures (16 modules)  
-📋 **Iterable**, **NonEmptyIterable**, **RedBlackTree**, **Trie**, **MutableHashMap**, **MutableHashSet**, **MutableList**, **MutableQueue**, **MutableRef**, **Ref**, **SynchronizedRef**, **SubscriptionRef**, **ScopedRef**, **Deferred**, **PubSub**, **Pool**
+### Tier 2 - Data Structures & Collections (28 modules) ✅
+**Trie**, **RedBlackTree**, **MutableHashMap**, **MutableHashSet**, **MutableList**, **MutableQueue**, **MutableRef**, **RcMap**, **RcRef**, **NonEmptyIterable**, **Iterable**, **Tuple**, **Readable**, **Equivalence**, **Ordering**, **BigDecimal**, **BigInt**, **Boolean**, **RegExp**, **Subscribable**, **SubscriptionRef**, **ScopedCache**, **ScopedRef**, **Sink**, **Streamable**, **StreamEmit**, **StreamHaltStrategy**, **JSONSchema**
 
-### Priority 3 - STM & Concurrency (15 modules)
-📋 **TArray**, **TMap**, **TQueue**, **TRef**, **TSet**, **TDeferred**, **TPubSub**, **TPriorityQueue**, **TSemaphore**, **TReentrantLock**, **TSubscriptionRef**, **TRandom**, **KeyedPool**, **RateLimiter**, **Cache**
+### Tier 3 - Concurrency & STM (14/20 modules) 🚧
+**Completed**: **TArray**, **TDeferred**, **TMap**, **TPriorityQueue**, **TPubSub**, **TQueue**, **TRandom**, **TReentrantLock**, **TRef**, **TSemaphore**, **TSet**, **TSubscriptionRef**, **SynchronizedRef**, **PubSub**
 
-### Priority 4 - System Infrastructure (15 modules)
-📋 **ScopedCache**, **Logger**, **LogLevel**, **LogSpan**, **Tracer**, **Metric**, **MetricKey**, **MetricLabel**, **Resource**, **Reloadable**, **ManagedRuntime**, **Cause**, **Data**, **Brand**, **Supervisor**
+**In Progress**: Take, Mailbox, SingleProducerAsyncInput, FiberHandle, FiberId, FiberMap
 
-### Priority 5 - Specialized Utilities (10 modules)
-📋 **Secret**, **Redacted**, **Pretty**, **Encoding**, **RegExp**, **BigInt**, **BigDecimal**, **Cron**, **Take**, **Sink**
+## 🚧 Remaining Core Effect Modules (80 Remaining)
 
-**Next Phase**: Creating foundation modules (Predicate, Struct, Record, String) starting immediately.
+### Tier 4 - Advanced Features (30 modules) ⏸️
+**Deferred**, **KeyedPool**, **RateLimiter**, **TestClock**, **TestContext**, **TestServices**, **Layer**, **ConfigProvider**, **ConfigSecret**, **Effect**, **Stream**, **Channel**, **Array**, **Option**, **Either**, **Fiber**, **Schedule**, **Queue**, **STM**, **Exit**, **FiberRef**, **Scope**, **Config**, **Context**, **Runtime**, **Function**, **Chunk**, **HashMap**, **HashSet**, **List**
+
+### Tier 5 - Metrics & Observability (18 modules) ⏸️
+**Metric**, **MetricBoundaries**, **MetricHook**, **MetricKey**, **MetricKeyType**, **MetricLabel**, **MetricPair**, **MetricRegistry**, **MetricState**, **LogLevel**, **LogSpan**, **FiberRefs**, **FiberStatus**, **Annotations**, **Request**, **RequestResolver**, **RequestBlock**, **TestAnnotation**
+
+### Tier 6 - Testing & Utilities (26 modules) ⏸️
+**Gen**, **Sample**, **Sized**, **TestAnnotationMap**, **TestAspect**, **TestConfig**, **TestFailure**, **TestResult**, **TestSuccess**, **Clock**, **DateTime**, **Random**, **SortedMap**, **SortedSet**, **Duration**, **Predicate**, **Struct**, **Record**, **String**, **Number**, **ReadonlyArray**, **ReadonlyRecord**, **Unify**, **Concurrency**, **Differ**, **Inspectable**
+
+**Next Phase**: Complete Tier 3 remaining modules, then proceed to Tier 4.
 
 ---
 
